@@ -34,7 +34,10 @@ make prepare_raw_data
 
 ## Validation
 
-TODO
+Just simply run:
+```
+make test
+```
 
 ---
 
@@ -53,13 +56,15 @@ TODO
 
 2. Eye PSF:
 
-    2.1 Generated with our own simulator 
+    2.1 Generated with our own simulator.
 
 3. Gauss:
 
-    3.1 Generated:
+    3.1 Generated with [this script](https://github.com/birdievera/Anisotropic-Gaussian/blob/master/gaussian_filter.py).
 
 
 ### Ground truth images
 
 1. [BSDS300](https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/segbench/)
+
+2. [Sun et al](https://cs.brown.edu/people/lbsun/deblur2013/deblur2013iccp.html). Images are taken from [here](https://drive.google.com/drive/folders/1Mb_mhtLG6N7CwiCMBnBMlJZyaqxQM-Nl).
