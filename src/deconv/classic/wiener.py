@@ -24,7 +24,7 @@ def wiener_gray(blurred_image: np.array, psf: np.array, clip: bool, **algo_param
     restored = restoration.wiener(image=blurred_image, psf=psf, **algo_params)
     if clip:
         return np.clip(restored / restored.max(), 0, 1)
-    return restored / restored.max()
+    return (restored / restored.max()).astype(np.float32)
 
 
 def wiener_rgb(blurred_image: np.array, psf: np.array, clip: bool, **algo_params) -> np.array:
