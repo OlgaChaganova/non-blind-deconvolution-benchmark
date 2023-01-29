@@ -9,7 +9,7 @@ A benchmark for non-blind deconvolution methods: classical algorithms vs SOTA ne
 1. Install requirements (python >= 3.10):
 
 ```
-pip install requiremets.txt
+make install
 ```
 
 2. Download prepared data:
@@ -29,7 +29,7 @@ TODO
 and unpack it:
 
 ```
-python src/data/prepare/unpack_levin.py
+make prepare_raw_data
 ```
 
 ## Validation
