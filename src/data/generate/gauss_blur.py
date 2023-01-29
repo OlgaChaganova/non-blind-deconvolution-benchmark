@@ -6,7 +6,7 @@ import typing as tp
 from math import exp, sqrt, pi
 
 import numpy as np
-from scipy.ndimage.interpolation import rotate
+from scipy.ndimage import rotate
 
 
 # globals for kernel simulating (set mannually)
@@ -39,8 +39,11 @@ def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[int, int]
 
 def save_psf(filename: str, psf: np.array, params: dict):
     new_path = f'datasets/kernels/gauss-blur/processed/synthetic/{filename}.npy'
-    params.update({'psf': psf})
-    np.save(file=new_path, arr=params)
+    data = {
+        'psf': psf,
+        'params': params,
+    }
+    np.save(file=new_path, arr=data)
     logging.info(f'File {filename} was saved in {new_path}')
 
 
@@ -59,7 +62,7 @@ def main():
             'angle': angle,
         }
         save_psf(filename=f'synthetic-{i}', psf=psf, params=params)
-
+    logging.info('Gauss blur dataset is fully preprocessed.')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

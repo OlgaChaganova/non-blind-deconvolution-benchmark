@@ -12,7 +12,11 @@ def parse():
     return parser.parse_args()
 
 
-def save_psf(data: dict, new_filename: str):
+def save_psf(psf: np.array, params: dict, new_filename: str):
+    data = {
+        'psf': psf,
+        'params': params,
+    }
     new_path = f'datasets/kernels/eye-psf/processed/synthetic/{new_filename}.npy'
     np.save(file=new_path, arr=data)
     logging.info(f'Saved in {new_path}')
@@ -27,14 +31,18 @@ def main():
     for i, (big_psf, medium_psf, small_psf) in enumerate(zip(big_psfs, medium_psfs, small_psfs)):
         if i == args.count:
             break
-        big_psf['psf'] = big_psf['psf'] / big_psf['psf'].sum()
-        save_psf(big_psf, new_filename='big-psf-'+str(i))
+        psf = big_psf['psf'] / big_psf['psf'].sum()
+        params = {key: value for (key, value) in big_psfs[0].items() if key != 'psf'}
+        save_psf(psf, params, new_filename='big-psf-'+str(i))
 
-        medium_psf['psf'] = medium_psf['psf'] / medium_psf['psf'].sum()
-        save_psf(medium_psf, new_filename='medium-psf-'+str(i))
+        psf =  medium_psf['psf'] / medium_psf['psf'].sum()
+        params = {key: value for (key, value) in big_psfs[0].items() if key != 'psf'}
+        save_psf(medium_psf, params, new_filename='medium-psf-'+str(i))
 
-        small_psf['psf'] = small_psf['psf'] / small_psf['psf'].sum()
-        save_psf(small_psf, new_filename='small-psf-'+str(i))
+        psf = small_psf['psf'] / small_psf['psf'].sum()
+        params = {key: value for (key, value) in big_psfs[0].items() if key != 'psf'}
+        save_psf(small_psf, params, new_filename='small-psf-'+str(i))
+    logging.info('Eye PSFs dataset is fully preprocessed.')
 
 
 if __name__ == '__main__':

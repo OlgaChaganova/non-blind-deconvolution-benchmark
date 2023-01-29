@@ -17,15 +17,20 @@ def save_psf(filename: str, new_filename: str):
     psf = read_psf(filename)
     if not np.allclose(psf.sum(), 1, atol=0.01, rtol=0.01):
         psf /= psf.sum()
+    data = {
+        'psf': psf,
+        'params': None,
+    }
     new_path = f'datasets/kernels/motion-blur/processed/Sun/{new_filename}.npy'
-    np.save(file=new_path, arr=psf)
+    np.save(file=new_path, arr=data)
     logging.info(f'File {filename} was saved in {new_path}')
 
 
 def main():
     filenames = Path(f'datasets/kernels/motion-blur/raw/Sun').rglob('*.png')
     for i, filename in enumerate(filenames):
-        save_psf(filename, new_filename='sun-'+str(i))
+        save_psf(filename, new_filename=('sun-' + str(i)))
+    logging.info('Sun dataset is fully preprocessed.')
 
 
 if __name__ == '__main__':

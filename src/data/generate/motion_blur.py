@@ -34,12 +34,12 @@ def kernel_sim_spline(psz: int, mxsz: int, nc: int, num: int = 1) -> np.array:
             y = np.random.randint(0, psz, nc)
             order = min(nc - 1, 3)
 
-            spx = splrep(np.linspace(0, 1, nc), x.astype(np.float), k=order)
+            spx = splrep(np.linspace(0, 1, nc), x.astype(np.float32), k=order)
             x = splev(np.linspace(0, 1, nc * 5000), spx)
             x = np.clip(x, 0, psz - 1)
             x = np.round(x).astype(np.int32)
 
-            spy = splrep(np.linspace(0, 1, nc), y.astype(np.float), k=order)
+            spy = splrep(np.linspace(0, 1, nc), y.astype(np.float32), k=order)
             y = splev(np.linspace(0, 1, nc * 5000), spy)
             y = np.clip(y, 0, psz - 1)
             y = np.round(y).astype(np.int32)
@@ -88,8 +88,11 @@ def kernel_sim_spline(psz: int, mxsz: int, nc: int, num: int = 1) -> np.array:
 
 def save_psf(filename: str, psf: np.array, params: dict):
     new_path = f'datasets/kernels/motion-blur/processed/synthetic/{filename}.npy'
-    params.update({'psf': psf})
-    np.save(file=new_path, arr=params)
+    data = {
+        'psf': psf,
+        'params': params,
+    }
+    np.save(file=new_path, arr=data)
     logging.info(f'File {filename} was saved in {new_path}')
 
 
@@ -105,7 +108,7 @@ def main():
         }
         psf = kernel_sim_spline(psz=sp_size, mxsz=K_SIZE, nc=num_spl_ctrl)
         save_psf(filename=f'synthetic-{i}', psf=psf, params=params)
-
+    logging.info('Motion blur dataset is fully preprocessed.')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
