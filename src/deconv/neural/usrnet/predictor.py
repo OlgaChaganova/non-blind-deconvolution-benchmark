@@ -1,3 +1,4 @@
+import logging
 import typing as tp
 
 import numpy as np
@@ -10,6 +11,7 @@ from src.deconv.neural.usrnet.utils.utils_image import single2tensor4
 
 def load_weights(model: nn.Module, model_path: str):
     model.load_state_dict(torch.load(model_path), strict=True)
+    logging.info('Model\'s state was loaded successfully.')
     model.eval()
     for _, v in model.named_parameters():
         v.requires_grad = False
@@ -46,8 +48,8 @@ class USRNetPredictor(object):
         self._scale_factor = scale_factor
         self._noise_level = noise_level
     
-    def forward(self, blurred_image: torch.tensor, psf: torch.tensor, noise_level: float = None) -> np.array:
-        """Forward pass.
+    def __call__(self, blurred_image: np.array, psf: np.array, noise_level: float = None) -> np.array:
+        """Forward pass on the inference stage.
 
         Parameters
         ----------
