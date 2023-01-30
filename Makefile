@@ -16,3 +16,7 @@ prepare_raw_data:
 	python src/data/generate/gauss_blur.py $(COUNT_GAUSS)
 	python src/data/generate/motion_blur.py $(COUNT_MOTION)
 	echo 'All datasets are prepared!'
+
+.PHONY: test
+test:
+	echo 'TODO'
