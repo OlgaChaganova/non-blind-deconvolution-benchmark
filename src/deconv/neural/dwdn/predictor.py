@@ -45,9 +45,9 @@ class DWDNPredictor(object):
 
         Parameters
         ----------
-        blurred_image : torch.tensor
+        blurred_image : np.array
             Blurred image. Shape: [num_channels, height, width]
-        psf : torch.tensor
+        psf : np.array
             PSF. Shape: [height, width]
 
         Returns
