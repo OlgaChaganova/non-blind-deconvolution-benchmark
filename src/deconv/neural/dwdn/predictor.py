@@ -57,8 +57,6 @@ class DWDNPredictor(object):
         """
         blurred_image, psf = self._preprocess(blurred_image, psf)
         with torch.no_grad():
-            print(blurred_image[0, 0, 0:5, 0:5])
-            print(psf[0, 0, 0:5, 0:5])
             model_output = self._model(blurred_image, psf)
         return self._postprocess(model_output)
     

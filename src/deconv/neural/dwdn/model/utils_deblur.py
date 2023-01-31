@@ -60,8 +60,7 @@ def get_uperleft_denominator(img, kernel):
     nsr = wiener_filter_para(img)
     denominator = inv_fft_kernel_est(ker_f, nsr )
     img1 = img
-    # numerator = torch.rfft(img1, 3, onesided=False)
-    numerator = torch.view_as_real(torch.fft.fft2(img1))
+    numerator = torch.rfft(img1, 3, onesided=False)
     deblur = deconv(denominator, numerator)
     return deblur
 
@@ -99,10 +98,9 @@ def deconv(inv_ker_f, fft_input_blur):
                             - inv_ker_f[:, :, :, :, 1] * fft_input_blur[:, :, :, :, 1]
     deblur_f[:, :, :, :, 1] = inv_ker_f[:, :, :, :, 0] * fft_input_blur[:, :, :, :, 1] \
                             + inv_ker_f[:, :, :, :, 1] * fft_input_blur[:, :, :, :, 0]
-    # deblur = torch.irfft(deblur_f, 3, onesided=False)
-    deblur = torch.view_as_real(torch.fft.fft2(deblur_f))
+    deblur = torch.irfft(deblur_f, 3, onesided=False)
     return deblur
-
+ 
 # --------------------------------
 # --------------------------------
 def convert_psf2otf(ker, size):
@@ -113,9 +111,7 @@ def convert_psf2otf(ker, size):
     psf[:, :, :centre, -(centre-1):] = ker[:, :, (centre-1):, :(centre-1)]
     psf[:, :, -(centre-1):, :centre] = ker[:, :, : (centre-1), (centre-1):]
     psf[:, :, -(centre-1):, -(centre-1):] = ker[:, :, :(centre-1), :(centre-1)]
-    # compute the otf
-    # otf = torch.rfft(psf, 3, onesided=False) # old torch 1.7.1
-    otf = torch.view_as_real(torch.fft.fft2(psf))
+    otf = torch.rfft(psf, 3, onesided=False) # old torch 1.7.1
     return otf
 
 
