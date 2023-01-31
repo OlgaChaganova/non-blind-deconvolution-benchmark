@@ -9,7 +9,7 @@ from src.deconv.neural.dwdn.model.model import DEBLUR
 from src.deconv.neural.dwdn.model.utils_deblur import postprocess
 
 
-def load_weights(model: nn.Module, model_path: str):
+def load_weights(model: nn.Module, model_path: str) -> nn.Module:
     model.load_state_dict(torch.load(model_path), strict=True)
     logging.info('Model\'s state was loaded successfully.')
     model.eval()
@@ -46,14 +46,14 @@ class DWDNPredictor(object):
         Parameters
         ----------
         blurred_image : np.array
-            Blurred image. Shape: [num_channels, height, width]
+            Blurred image. Shape: [height, width, num_channels]
         psf : np.array
             PSF. Shape: [height, width]
 
         Returns
         -------
         np.array
-           Restored image. Shape: [bs, num_channels, height, width]
+           Restored image. Shape: [height, width, num_channels]
         """
         blurred_image, psf = self._preprocess(blurred_image, psf)
         with torch.no_grad():
@@ -63,6 +63,6 @@ class DWDNPredictor(object):
     def _preprocess(self, blurred_image: np.array, psf: np.array) -> tp.Tuple[torch.tensor, torch.tensor]:
         return torch.from_numpy(blurred_image).permute(2, 0, 1).unsqueeze(dim=0), torch.from_numpy(psf).unsqueeze(dim=0).unsqueeze(dim=0)
     
-    def _postprocess(self, model_output: tp.List[torch.tensor]) -> torch.tensor:
+    def _postprocess(self, model_output: tp.List[torch.tensor]) -> np.array:
         deblur = postprocess(model_output[-1], rgb_range=self.rgb_range)
-        return deblur[0].cpu().permute(0, 2, 3, 1).numpy()
+        return deblur[0].cpu().permute(0, 2, 3, 1).numpy()[0]

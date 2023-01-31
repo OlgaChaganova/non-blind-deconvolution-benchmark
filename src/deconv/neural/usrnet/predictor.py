@@ -9,7 +9,7 @@ from src.deconv.neural.usrnet.model.model import USRNet
 from src.deconv.neural.usrnet.utils.utils_image import single2tensor4
 
 
-def load_weights(model: nn.Module, model_path: str):
+def load_weights(model: nn.Module, model_path: str) -> nn.Module:
     model.load_state_dict(torch.load(model_path), strict=True)
     logging.info('Model\'s state was loaded successfully.')
     model.eval()
@@ -54,17 +54,17 @@ class USRNetPredictor(object):
         Parameters
         ----------
         blurred_image : np.array
-            Blurred image. Shape: [num_channels, height, width]
+            Blurred image. Shape: [height, width, num_channels]
         psf : np.array
             PSF. Shape: [height, width]
 
         Returns
         -------
         np.array
-           Restored image. Shape: [bs, num_channels, height, width]
+           Restored image. Shape: [height, width, num_channels]
         """
         blurred_image, psf = self._preprocess(blurred_image, psf)
-        return self._forward(blurred_image, psf, noise_level).cpu().permute(0, 2, 3, 1).numpy()
+        return self._forward(blurred_image, psf, noise_level).cpu().permute(0, 2, 3, 1).numpy()[0]
     
     def _forward(self, blurred_image: torch.tensor, psf: torch.tensor, noise_level: float = None) -> torch.tensor:
         blurred_image = blurred_image.to(self._device)
