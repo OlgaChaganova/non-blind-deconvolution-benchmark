@@ -6,7 +6,7 @@ A benchmark for non-blind deconvolution methods: classical algorithms vs SOTA ne
 
 ## Installation
 
-1. Install requirements (python >= 3.10):
+1. Install requirements (python >= 3.9):
 
 ```
 make install
@@ -68,3 +68,19 @@ make test
 1. [BSDS300](https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/segbench/)
 
 2. [Sun et al](https://cs.brown.edu/people/lbsun/deblur2013/deblur2013iccp.html). Images are taken from [here](https://drive.google.com/drive/folders/1Mb_mhtLG6N7CwiCMBnBMlJZyaqxQM-Nl).
+
+
+---
+
+## Models and algorithms
+
+1. Wiener filter (as baseline): source code in `src/deconv/classic/wiener.py`;
+
+2. [USRNet](https://github.com/cszn/USRNet): source code in `src/deconv/neural/usrnet`;
+
+3. [DWDN](https://github.com/dongjxjx/dwdn): source code in `src/deconv/neural/dwdn`;
+
+4. [KerUnc](https://github.com/ysnan/NBD_KerUnc): source code in `src/deconv/neural/kerunc`.
+
+
+Example of each model inference can be found [here](notebooks/models.ipynb).
