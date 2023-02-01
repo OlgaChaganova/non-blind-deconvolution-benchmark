@@ -1,0 +1,44 @@
+models:
+    wiener_noise_blind:
+        gauss_blur: True
+        motion_blur: True
+        eye_psf: True
+        RGB: True
+        params:
+            balance: 1e-2
+            clip: True
+
+    usrnet:
+        gauss_blur: True
+        motion_blur: True
+        eye_psf: True
+        RGB: True
+        model_path: 'models/usrnet.pth'
+        params:
+            scale_factor: 1
+            noise_level: 0
+            device: 'cpu'
+
+    dwdn:
+        gauss_blur: False
+        motion_blur: True
+        eye_psf: False
+        RGB: True
+        model_path: 'models/model_DWDN.pt'
+        params:
+            n_levels: 2
+            scale: 0.5
+            device: 'cpu'
+
+    kerunc:
+        gauss_blur: False
+        motion_blur: True
+        eye_psf: False
+        RGB: False
+        model_path: 'models/keruncnet/noise_0pp'
+        params:
+            lmds: [0.005, 0.1, 0.1, 0.1, 0.1]
+            device: 'cpu'
+  
+dataset:
+    full: False
