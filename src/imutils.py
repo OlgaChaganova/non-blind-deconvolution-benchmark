@@ -85,3 +85,10 @@ def crop2even(image: np.array) -> np.array:
         image = image[:, :-1, ...]
 
     return image
+
+
+def load_npy(filename: str, key: tp.Optional[str] = None):
+    arr = np.load(filename, allow_pickle=True).item()
+    if key is not None:
+        return arr.get(key)
+    return arr
