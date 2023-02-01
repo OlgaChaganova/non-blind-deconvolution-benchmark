@@ -5,7 +5,7 @@ COUNT_MOTION := 30
 
 .PHONY: install
 install:
-	pip install -r requirements.txt
+	pip install -r requirements_old_torch.txt
 
 
 .PHONY: prepare_raw_data
@@ -19,4 +19,4 @@ prepare_raw_data:
 
 .PHONY: test
 test:
-	echo 'TODO'
+	python src/train.py --models $(MODELS)
