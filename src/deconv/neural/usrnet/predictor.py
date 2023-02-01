@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.deconv.neural.usrnet.model.model import USRNet
-from src.deconv.neural.usrnet.utils.utils_image import single2tensor4
+from deconv.neural.usrnet.model.model import USRNet
+from deconv.neural.usrnet.utils.utils_image import single2tensor4
 
 
 def load_weights(model: nn.Module, model_path: str) -> nn.Module:

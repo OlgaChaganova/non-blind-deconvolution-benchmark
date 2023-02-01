@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.deconv.neural.dwdn.model.model import DEBLUR
-from src.deconv.neural.dwdn.model.utils_deblur import postprocess
+from deconv.neural.dwdn.model.model import DEBLUR
+from deconv.neural.dwdn.model.utils_deblur import postprocess
 
 
 def load_weights(model: nn.Module, model_path: str) -> nn.Module:

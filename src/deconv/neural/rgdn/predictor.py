@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.deconv.neural.rgdn.model.model import OptimizerRGDN
+from deconv.neural.rgdn.model.model import OptimizerRGDN
 
 
 def load_weights(model: nn.Module, model_path: str) -> nn.Module:

@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from torch import nn
 
-from src.deconv.neural.kerunc.model.model import KernelErrorModel
-from src.deconv.neural.kerunc.model.utils.comfft import fft
-from src.deconv.neural.kerunc.model.utils.imtools import for_fft
+from deconv.neural.kerunc.model.model import KernelErrorModel
+from deconv.neural.kerunc.model.utils.comfft import fft
+from deconv.neural.kerunc.model.utils.imtools import for_fft
 
 
 def load_weights(model: nn.Module, model_path: str) -> nn.Module:

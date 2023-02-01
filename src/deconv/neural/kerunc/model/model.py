@@ -3,9 +3,9 @@ import typing as tp
 import torch
 from torch import nn
 
-from src.deconv.neural.kerunc.model.utils import comfft as cf
-from src.deconv.neural.kerunc.model.dual_path_unet import dual_path_unet
-from src.deconv.neural.kerunc.model.utils.wavelet import generate_wavelet, wv_norm, Fwv
+from deconv.neural.kerunc.model.utils import comfft as cf
+from deconv.neural.kerunc.model.dual_path_unet import dual_path_unet
+from deconv.neural.kerunc.model.utils.wavelet import generate_wavelet, wv_norm, Fwv
 
 
 class KernelErrorModel(nn.Module):

@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.nn import Module
 from torch.autograd import Variable
 
-from src.deconv.neural.rgdn.model.utils import truncate_image
+from deconv.neural.rgdn.model.utils import truncate_image
 
 
 class ConvBlock(Module):

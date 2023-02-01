@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.fft
 
-from src.deconv.neural.usrnet.model import basicblock as B
+from deconv.neural.usrnet.model import basicblock as B
 
 # for pytorch version >= 1.8.1
 
