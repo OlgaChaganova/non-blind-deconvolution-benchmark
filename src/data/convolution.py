@@ -70,33 +70,3 @@ def convolve(
 
     else:
         raise ValueError(f'Image must be 2- or 3-dimencional but got {ndim}-dimencional image.')
-
-
-def convolve_tensors(
-    image: np.array,
-    psf: np.array,
-) -> torch.tensor:
-    """Convolve tensors (used in USRNet)."""
-
-    if not np.allclose(psf.sum(), 1, rtol=1e-2, atol=1e-2):
-        psf = psf / psf.sum()
-        logging.warning('PSF has sum more than 1. Normed')
-
-    if image.dtype in [np.uint8, np.uint16]:
-        image = image.astype(np.float) / 255.
-    image = torch.DoubleTensor(image)
-
-    if image.shape != psf.shape:
-        sz = (image.shape[0] - psf.shape[0], image.shape[1] - psf.shape[1])
-        psf = np.pad(
-            psf,
-            (((sz[0] + 1) // 2, sz[0] // 2), ((sz[1] + 1) // 2, sz[1] // 2)),
-            'constant'
-        )
-    psf = torch.DoubleTensor(psf)
-    
-    conv_image = torch.zeros(image.shape)
-    for i in range(image.shape[2]):
-        conv_channel = torch.real(torch.fft.ifftn(torch.fft.fftn(image[..., i]) * torch.fft.fftn(psf)))
-        conv_image[..., i] = torch.fft.fftshift(conv_channel)
-    return conv_image
