@@ -2,6 +2,9 @@ COUNT_EYE := 30
 COUNT_GAUSS := 30
 COUNT_MOTION := 30
 
+DB_NAME := 'results'
+TABLE_NAME := 'all_models'
+
 
 .PHONY: install
 install:
@@ -19,4 +22,4 @@ prepare_raw_data:
 
 .PHONY: test
 test:
-	python src/train.py --models $(MODELS)
+	python src/main.py --models $(MODELS) --db_name $(DB_NAME) --table_name $(TABLE_NAME)
