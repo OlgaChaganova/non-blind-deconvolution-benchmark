@@ -1,13 +1,11 @@
 import argparse
 import logging
-import os
 import typing as tp
 import warnings
-from datetime import datetime
 
-import pandas as pd
 from omegaconf import OmegaConf
 
+from database import Database
 from deconv.classic.wiener import wiener_gray
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
@@ -35,6 +33,18 @@ def parse():
         nargs='+',
         default=tp.get_args(_AVAILABLE_MODELS),
         help=f'List of models to be tested. By default, all available models: {tp.get_args(_AVAILABLE_MODELS)} will be tested.',
+    )
+    parser.add_argument(
+        '--db_name',
+        type=str,
+        default='results',
+        help='Database name.',
+    )
+    parser.add_argument(
+        '--table_name',
+        type=str,
+        default='all_models',
+        help='Table name.',
     )
     return parser.parse_args()
 
@@ -86,39 +96,22 @@ def main():
         )
     
     if len(models) > 0:
+        database = Database(db_name=args.db_name)
+
         tester = Tester(
             is_full=cd.full,
             models=models,
+            db_path=database.db_path,
+            table_name=args.table_name,
         )
 
-        try:
-            tester.test()
-            results = tester.results
+        database.create_or_connect_db()
+        database.create_table(table_name=args.table_name)
 
-        except (KeyboardInterrupt, RuntimeError):
-            results = tester.results
-            results = pd.DataFrame(
-                results,
-                columns=[
-                    'blur_type',
-                    'blur_dataset',
-                    'kernel',  # path to kernel.npy
-                    'image_dataset',
-                    'image',  # path to image.png
-                    'discretization',
-                    'noised',
-                    'model',
-                    'SSIM',
-                    'PSNR',
-                    'Sharpness',
-                ]
-            )
-    
-        timestamp = datetime.today().strftime('%Y-%m-%d--%H:%M:%S')
-        results.to_csv(os.path.join('results', f'results_{timestamp}.csv'), index_label='id')
+        tester.test()
 
     else:
-        logging.error('Results are empty, there is nothing to be written')
+        logging.error(f'No model was selected. Available models: {tp.get_args(_AVAILABLE_MODELS)}')
 
 
 if __name__ == '__main__':

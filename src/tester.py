@@ -1,10 +1,11 @@
 import itertools
 import logging
 import os
+import sqlite3
 import typing as tp
 from pathlib import Path
 
-import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from data.convolution import convolve
@@ -21,44 +22,28 @@ class Tester(object):
         self,
         is_full: bool,
         models: tp.List[tp.Tuple[tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable], str]],
+        db_path: str,
+        table_name: str,
     ):
-        self.is_full =  is_full
-        self.models = models
+        self._is_full =  is_full
+        self._models = models
+        self._db_path = db_path
+        self._table_name = table_name
+        self._kernels = {}
+        self._gt_images = {}
 
-        self.kernels = {}
-        self.gt_images = {}
-
-        self.results = []
-
-        self._prepare()
-
-    def _prepare(self):  # HARD-HARD-HARDCODE
-        assert self.is_full == False
-
-        if not self.is_full:
-            self.kernels['motion'] = list(Path('datasets/kernels/motion-blur/processed/Levin').rglob('*.npy'))[:1] +\
-                                list(Path('datasets/kernels/motion-blur/processed/Sun').rglob('*.npy'))[:1] + \
-                                list(Path('datasets/kernels/motion-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self.kernels['gauss'] = list(Path('datasets/kernels/gauss-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self.kernels['eye'] = list(Path('datasets/kernels/eye-psf/processed/synthetic').rglob('*.npy'))[:1]
-
-            self.gt_images['bsds300'] = list(Path('datasets/gt/BSDS300').rglob('*.jpg'))[:1]
-            self.gt_images['sun'] = list(Path('datasets/gt/Sun-gray').rglob('*.png'))[:1]
-
-            for blur_type in self.kernels.keys():
-                self.kernels[blur_type] = list(map(lambda path: (load_npy(path, 'psf'), str(path)), self.kernels[blur_type]))
-
-            for image_dataset in self.gt_images.keys():
-                self.gt_images[image_dataset] = list(map(lambda path: (imread(path), str(path)), self.gt_images[image_dataset]))
-
-        logging.info('Everything is ready for the test to begin.')
-    
+        self._prepare() 
 
     def test(self):
-        results = []
-        for blur_type in tqdm(self.kernels.keys()):
-            for image_dataset in self.gt_images.keys():
-                image_kernel_pairs = list(itertools.product(self.kernels[blur_type], self.gt_images[image_dataset]))  # сartesian product
+        connection = sqlite3.connect(self._db_path)
+        cursor = connection.cursor()
+        insert_query = f'''INSERT INTO {self._table_name}
+            (blur_type, blur_dataset, kernel, image_dataset, image, discretization, noised, model, ssim, psnr) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'''
+
+        for blur_type in tqdm(self._kernels.keys()):
+            for image_dataset in self._gt_images.keys():
+                image_kernel_pairs = list(itertools.product(self._kernels[blur_type], self._gt_images[image_dataset]))  # сartesian product
                 for pair in image_kernel_pairs:
                     kernel = pair[0][0]
                     kernel_path = pair[0][1]
@@ -67,55 +52,78 @@ class Tester(object):
                     image_path = pair[1][1]
 
                     image = crop2even(image)
-                    logging.info(image.shape)
                     image = rgb2gray(image)
 
                     try:
                         blurred = convolve(image, kernel)
-                        blurred_3d = gray2gray3d(blurred)
-                    except ValueError: #index can't contain negative values
+                        noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
+                    except ValueError: #index can't contain negative values                 ######### FIX MEEEEEEEEEEEEEEEE
                         continue
-                    
-                    noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
-                    noised_blurred_3d = gray2gray3d(noised_blurred)
 
-                    for model, model_name in self.models:                      
+                    for model, model_name in self._models:                      
                         if model_name in ['dwdn', 'kerunc'] and blur_type in ['gauss', 'eye']:
                             continue
-                        
-                        # without noise:
-                        restored = (
-                            model(blurred_3d, kernel)[..., 0]
-                            if model_name in ['usrnet', 'dwdn']
-                            else model(blurred, kernel)
-                        )
-                        ssim_value = ssim(image, restored)
-                        psnr_value = psnr(image, restored)
-                        results.append([blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, ssim_value, psnr_value, None])
+                    
+                        try:
+                            # no noise
+                            metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
+                            cursor.execute(
+                                insert_query,
+                                (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
+                            )
+                            connection.commit()
+                            
+                            # with noise
+                            metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
+                            cursor.execute(
+                                insert_query,
+                                (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
+                            )
+                            connection.commit()
 
-                        # with noise:
-                        restored = (
-                            model(noised_blurred_3d, kernel)[..., 0]
-                            if model_name in ['usrnet', 'dwdn']
-                            else model(noised_blurred, kernel)
-                        )
-                        ssim_value = ssim(image, restored)
-                        psnr_value = psnr(image, restored)
-                        self.results.append([blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, ssim_value, psnr_value, None])
-        
-        self.results = pd.DataFrame(
-            results,
-            columns=[
-                'blur_type',
-                'blur_dataset',
-                'kernel',  # path to kernel.npy
-                'image_dataset',
-                'image',  # path to image.png
-                'discretization',
-                'noised',
-                'model',
-                'SSIM',
-                'PSNR',
-                'Sharpness',
-            ]
+                        except RuntimeError:                                                                ######### FIX MEEEEEEEEEEEEEEEE
+                            logging.error(image.shape)
+                            continue
+    
+    def _prepare(self):  # HARD-HARD-HARDCODE
+        assert self._is_full == False
+
+        if not self._is_full:
+            self._kernels['motion'] = list(Path('datasets/kernels/motion-blur/processed/Levin').rglob('*.npy'))[:1] +\
+                                list(Path('datasets/kernels/motion-blur/processed/Sun').rglob('*.npy'))[:1] + \
+                                list(Path('datasets/kernels/motion-blur/processed/synthetic').rglob('*.npy'))[:1]
+            self._kernels['gauss'] = list(Path('datasets/kernels/gauss-blur/processed/synthetic').rglob('*.npy'))[:1]
+            self._kernels['eye'] = list(Path('datasets/kernels/eye-psf/processed/synthetic').rglob('*.npy'))[:1]
+
+            self._gt_images['bsds300'] = list(Path('datasets/gt/BSDS300').rglob('*.jpg'))[:1]
+            self._gt_images['sun'] = list(Path('datasets/gt/Sun-gray').rglob('*.png'))[:1]
+
+            for blur_type in self._kernels.keys():
+                self._kernels[blur_type] = list(map(lambda path: (load_npy(path, 'psf'), str(path)), self._kernels[blur_type]))
+
+            for image_dataset in self._gt_images.keys():
+                self._gt_images[image_dataset] = list(map(lambda path: (imread(path), str(path)), self._gt_images[image_dataset]))
+
+        logging.info('Everything is ready for the test to begin.')
+    
+
+    def _calculate_metrics(
+            self,
+            model: tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable],
+            model_name: str,
+            image: np.array, 
+            blurred: np.array,
+            kernel: np.array,
+        ) -> dict:
+        blurred_3d = gray2gray3d(blurred)
+
+        restored = (
+            model(blurred_3d, kernel)[..., 0]
+            if model_name in ['usrnet', 'dwdn']
+            else model(blurred, kernel)
         )
+
+        return {
+            'ssim': ssim(image, restored),
+            'psnr': psnr(image, restored)
+        }
