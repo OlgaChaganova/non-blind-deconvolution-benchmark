@@ -31,15 +31,18 @@ def main():
     for i, (big_psf, medium_psf, small_psf) in enumerate(zip(big_psfs, medium_psfs, small_psfs)):
         if i == args.count:
             break
-        psf = big_psf['psf'] / big_psf['psf'].sum()
+        psf = big_psf['psf'][128:-128, 128:-128]
+        psf = psf / psf.sum()
         params = {key: value for (key, value) in big_psf.items() if key != 'psf'}
         save_psf(psf, params, new_filename='big-psf-'+str(i))
 
-        psf =  medium_psf['psf'] / medium_psf['psf'].sum()
+        psf = medium_psf['psf'][128:-128, 128:-128]
+        psf = psf / psf.sum()
         params = {key: value for (key, value) in big_psf.items() if key != 'psf'}
         save_psf(psf, params, new_filename='medium-psf-'+str(i))
 
-        psf = small_psf['psf'] / small_psf['psf'].sum()
+        psf = small_psf['psf'][128:-128, 128:-128]
+        psf = psf / psf.sum()
         params = {key: value for (key, value) in big_psf.items() if key != 'psf'}
         save_psf(psf, params, new_filename='small-psf-'+str(i))
     logging.info('Eye PSFs dataset is fully preprocessed.')
