@@ -53,12 +53,8 @@ class Tester(object):
 
                     image = crop2even(image)
                     image = rgb2gray(image)
-
-                    try:
-                        blurred = convolve(image, kernel)
-                        noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
-                    except ValueError: #index can't contain negative values                 ######### FIX MEEEEEEEEEEEEEEEE
-                        continue
+                    blurred = convolve(image, kernel)
+                    noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
 
                     for model, model_name in self._models:                      
                         if model_name in ['dwdn', 'kerunc'] and blur_type in ['gauss', 'eye']:
@@ -81,8 +77,8 @@ class Tester(object):
                             )
                             connection.commit()
 
-                        except RuntimeError:                                                                ######### FIX MEEEEEEEEEEEEEEEE
-                            logging.error(image.shape)
+                        except RuntimeError:
+                            logging.error(f'{model_name} can not be test on the image {image_path} with shape: {image.shape}')
                             continue
     
     def _prepare(self):  # HARD-HARD-HARDCODE
