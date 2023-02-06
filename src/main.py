@@ -3,6 +3,7 @@ import logging
 import typing as tp
 import warnings
 
+import numpy as np
 from omegaconf import OmegaConf
 
 from database import Database
@@ -118,5 +119,6 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    np.random.seed(8)
     main()
 
