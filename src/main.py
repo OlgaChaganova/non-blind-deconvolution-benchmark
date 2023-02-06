@@ -60,7 +60,7 @@ def main():
 
     if 'wiener_blind_noise' in args.models:
         models.append(
-            (lambda image, psf: wiener_gray(image, psf, **cm.wiener_noise_blind.params), 'wiener_noise_blind')
+            (lambda image, psf: wiener_gray(image, psf, **cm.wiener_blind_noise.params), 'wiener_blind_noise')
         )
 
     if 'kerunc' in args.models:
@@ -97,12 +97,13 @@ def main():
     
     if len(models) > 0:
         database = Database(db_name=args.db_name)
-
+        
         tester = Tester(
             is_full=cd.full,
             models=models,
             db_path=database.db_path,
             table_name=args.table_name,
+            model_config=cm,
         )
 
         database.create_or_connect_db()

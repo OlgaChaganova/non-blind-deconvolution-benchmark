@@ -24,11 +24,13 @@ class Tester(object):
         models: tp.List[tp.Tuple[tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable], str]],
         db_path: str,
         table_name: str,
+        model_config: dict,
     ):
         self._is_full =  is_full
         self._models = models
         self._db_path = db_path
         self._table_name = table_name
+        self._model_config = model_config
         self._kernels = {}
         self._gt_images = {}
 
@@ -56,40 +58,38 @@ class Tester(object):
                     blurred = convolve(image, kernel)
                     noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
 
-                    for model, model_name in self._models:                      
-                        if model_name in ['dwdn', 'kerunc'] and blur_type in ['gauss', 'eye']:
-                            continue
-                    
-                        try:
-                            # no noise
-                            metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
-                            cursor.execute(
-                                insert_query,
-                                (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
-                            )
-                            connection.commit()
-                            
-                            # with noise
-                            metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
-                            cursor.execute(
-                                insert_query,
-                                (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
-                            )
-                            connection.commit()
+                    for model, model_name in self._models:
+                        if self._model_config[model_name][blur_type]:                
+                            try:
+                                # no noise
+                                metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
+                                cursor.execute(
+                                    insert_query,
+                                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
+                                )
+                                connection.commit()
+                                
+                                # with noise
+                                metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
+                                cursor.execute(
+                                    insert_query,
+                                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
+                                )
+                                connection.commit()
 
-                        except RuntimeError:
-                            logging.error(f'{model_name} can not be test on the image {image_path} with shape: {image.shape}')
-                            continue
-    
+                            except RuntimeError:
+                                logging.error(f'{model_name} can not be test on the image {image_path} with shape: {image.shape}')
+                                continue
+        
     def _prepare(self):  # HARD-HARD-HARDCODE
         assert self._is_full == False
 
         if not self._is_full:
-            self._kernels['motion'] = list(Path('datasets/kernels/motion-blur/processed/Levin').rglob('*.npy'))[:1] +\
+            self._kernels['motion_blur'] = list(Path('datasets/kernels/motion-blur/processed/Levin').rglob('*.npy'))[:1] +\
                                 list(Path('datasets/kernels/motion-blur/processed/Sun').rglob('*.npy'))[:1] + \
                                 list(Path('datasets/kernels/motion-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self._kernels['gauss'] = list(Path('datasets/kernels/gauss-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self._kernels['eye'] = list(Path('datasets/kernels/eye-psf/processed/synthetic').rglob('*.npy'))[:1]
+            self._kernels['gauss_blur'] = list(Path('datasets/kernels/gauss-blur/processed/synthetic').rglob('*.npy'))[:1]
+            self._kernels['eye_blur'] = list(Path('datasets/kernels/eye-psf/processed/synthetic').rglob('*.npy'))[:1]
 
             self._gt_images['bsds300'] = list(Path('datasets/gt/BSDS300').rglob('*.jpg'))[:1]
             self._gt_images['sun'] = list(Path('datasets/gt/Sun-gray').rglob('*.png'))[:1]
