@@ -25,12 +25,15 @@ class Tester(object):
         db_path: str,
         table_name: str,
         model_config: dict,
+        data_config: dict,
     ):
         self._is_full =  is_full
         self._models = models
         self._db_path = db_path
         self._table_name = table_name
         self._model_config = model_config
+        self._data_config = data_config
+
         self._kernels = {}
         self._gt_images = {}
 
@@ -56,7 +59,7 @@ class Tester(object):
                     image = crop2even(image)
                     image = rgb2gray(image)
                     blurred = convolve(image, kernel)
-                    noised_blurred = make_noised(blurred, mu=0, sigma=0.01)
+                    noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
 
                     for model, model_name in self._models:
                         if self._model_config[model_name][blur_type]:                
