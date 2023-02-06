@@ -1,8 +1,8 @@
 models:
-    wiener_noise_blind:
-        gauss_blur: True
+    wiener_blind_noise:
+        gauss_blur: False
         motion_blur: True
-        eye_psf: True
+        eye_blur: True
         RGB: True
         params:
             balance: 1e-2
@@ -11,7 +11,7 @@ models:
     usrnet:
         gauss_blur: True
         motion_blur: True
-        eye_psf: True
+        eye_blur: True
         RGB: True
         model_path: 'models/usrnet.pth'
         params:
@@ -22,7 +22,7 @@ models:
     dwdn:
         gauss_blur: False
         motion_blur: True
-        eye_psf: False
+        eye_blur: False
         RGB: True
         model_path: 'models/model_DWDN.pt'
         params:
@@ -33,7 +33,7 @@ models:
     kerunc:
         gauss_blur: False
         motion_blur: True
-        eye_psf: False
+        eye_blur: False
         RGB: False
         model_path: 'models/keruncnet/noise_0pp'
         params:
@@ -42,3 +42,6 @@ models:
   
 dataset:
     full: False
+    blur:
+        sigma: 0.01
+        mu: 0

@@ -97,13 +97,14 @@ def main():
     
     if len(models) > 0:
         database = Database(db_name=args.db_name)
-        
+
         tester = Tester(
             is_full=cd.full,
             models=models,
             db_path=database.db_path,
             table_name=args.table_name,
             model_config=cm,
+            data_config=cd,
         )
 
         database.create_or_connect_db()
