@@ -100,7 +100,7 @@ def main():
         database = Database(db_name=args.db_name)
 
         tester = Tester(
-            is_full=cd.full,
+            benchmark_list_path=cd.benchmark_list_path,
             models=models,
             db_path=database.db_path,
             table_name=args.table_name,
@@ -112,6 +112,8 @@ def main():
         database.create_table(table_name=args.table_name)
 
         tester.test()
+
+        logging.info('Done!')
 
     else:
         logging.error(f'No model was selected. Available models: {tp.get_args(_AVAILABLE_MODELS)}')

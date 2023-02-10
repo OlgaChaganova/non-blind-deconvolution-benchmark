@@ -20,24 +20,19 @@ from metrics import psnr, ssim
 class Tester(object):
     def __init__(
         self,
-        is_full: bool,
+        benchmark_list_path: str, 
         models: tp.List[tp.Tuple[tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable], str]],
         db_path: str,
         table_name: str,
         model_config: dict,
         data_config: dict,
     ):
-        self._is_full =  is_full
+        self._benchmark_list_path = benchmark_list_path
         self._models = models
         self._db_path = db_path
         self._table_name = table_name
         self._model_config = model_config
         self._data_config = data_config
-
-        self._kernels = {}
-        self._gt_images = {}
-
-        self._prepare() 
 
     def test(self):
         connection = sqlite3.connect(self._db_path)
@@ -46,64 +41,34 @@ class Tester(object):
             (blur_type, blur_dataset, kernel, image_dataset, image, discretization, noised, model, ssim, psnr) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'''
 
-        for blur_type in tqdm(self._kernels.keys()):
-            for image_dataset in self._gt_images.keys():
-                image_kernel_pairs = list(itertools.product(self._kernels[blur_type], self._gt_images[image_dataset]))  # сartesian product
-                for pair in image_kernel_pairs:
-                    kernel = pair[0][0]
-                    kernel_path = pair[0][1]
-                    blur_dataset = kernel_path.split(os.sep)[-2]
-                    image = pair[1][0]
-                    image_path = pair[1][1]
+        with open(self._benchmark_list_path, 'r+') as file:
+            next(file)
+            for line in tqdm(file):
+                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+                kernel = load_npy(kernel_path, key='psf')
+                image = imread(image_path)
+                image = crop2even(image)
+                image = rgb2gray(image)
+                blurred = convolve(image, kernel)
+                noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
 
-                    image = crop2even(image)
-                    image = rgb2gray(image)
-                    blurred = convolve(image, kernel)
-                    noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-
-                    for model, model_name in self._models:
-                        if self._model_config[model_name][blur_type]:                
-                            try:
-                                # no noise
-                                metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
-                                cursor.execute(
-                                    insert_query,
-                                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
-                                )
-                                connection.commit()
-                                
-                                # with noise
-                                metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
-                                cursor.execute(
-                                    insert_query,
-                                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
-                                )
-                                connection.commit()
-
-                            except RuntimeError:
-                                logging.error(f'{model_name} can not be test on the image {image_path} with shape: {image.shape}')
-                                continue
-        
-    def _prepare(self):  # HARD-HARD-HARDCODE
-        assert self._is_full == False
-
-        if not self._is_full:
-            self._kernels['motion_blur'] = list(Path('datasets/kernels/motion-blur/processed/Levin').rglob('*.npy'))[:1] +\
-                                list(Path('datasets/kernels/motion-blur/processed/Sun').rglob('*.npy'))[:1] + \
-                                list(Path('datasets/kernels/motion-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self._kernels['gauss_blur'] = list(Path('datasets/kernels/gauss-blur/processed/synthetic').rglob('*.npy'))[:1]
-            self._kernels['eye_blur'] = list(Path('datasets/kernels/eye-psf/processed/synthetic').rglob('*.npy'))[:1]
-
-            self._gt_images['bsds300'] = list(Path('datasets/gt/BSDS300').rglob('*.jpg'))[:1]
-            self._gt_images['sun'] = list(Path('datasets/gt/Sun-gray').rglob('*.png'))[:1]
-
-            for blur_type in self._kernels.keys():
-                self._kernels[blur_type] = list(map(lambda path: (load_npy(path, 'psf'), str(path)), self._kernels[blur_type]))
-
-            for image_dataset in self._gt_images.keys():
-                self._gt_images[image_dataset] = list(map(lambda path: (imread(path), str(path)), self._gt_images[image_dataset]))
-
-        logging.info('Everything is ready for the test to begin.')
+                for model, model_name in self._models:
+                    if self._model_config[model_name][blur_type]:                
+                        # no noise
+                        metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
+                        cursor.execute(
+                            insert_query,
+                            (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
+                        )
+                        connection.commit()
+                        
+                        # with noise
+                        metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
+                        cursor.execute(
+                            insert_query,
+                            (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
+                        )
+                        connection.commit()
     
 
     def _calculate_metrics(

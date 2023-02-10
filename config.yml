@@ -1,6 +1,6 @@
 models:
     wiener_blind_noise:
-        gauss_blur: False
+        gauss_blur: True
         motion_blur: True
         eye_blur: True
         RGB: True
@@ -17,7 +17,7 @@ models:
         params:
             scale_factor: 1
             noise_level: 0
-            device: 'cpu'
+            device: 'cuda'
 
     dwdn:
         gauss_blur: False
@@ -41,7 +41,7 @@ models:
             device: 'cpu'
   
 dataset:
-    full: False
+    benchmark_list_path: 'datasets/short_dataset.txt'
     blur:
         sigma: 0.01
         mu: 0
