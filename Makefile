@@ -18,6 +18,7 @@ prepare_raw_data:
 	python src/data/prepare/sun.py
 	python src/data/generate/gauss_blur.py $(COUNT_GAUSS)
 	python src/data/generate/motion_blur.py $(COUNT_MOTION)
+	python src/data/generate/benchmark_list.py
 	echo 'All datasets are prepared!'
 
 .PHONY: test
