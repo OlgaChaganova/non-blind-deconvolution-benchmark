@@ -56,7 +56,7 @@ make test
 
 2. Eye PSF:
 
-    2.1 Generated with our own simulator.
+    2.1 Generated with our own simulator. Size: 256*256.
 
 3. Gauss:
 
@@ -86,3 +86,32 @@ make test
 
 
 Example of each model inference can be found [here](notebooks/models.ipynb).
+
+
+## Tips
+
+If you work in VS Code, you can use this [extention for SQLLite](https://marketplace.visualstudio.com/items?itemName=alexcvzz.vscode-sqlite) to make your work easier.
+
+
+---
+
+
+## How to run docker container
+
+1. Build image:
+
+```
+docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm --no-cache
+```
+
+2. Run container:
+
+```
+docker run --runtime=nvidia -it --name nbdb-c --mount type=bind,source=/home/chaganovaob/edu/non-blind-deconvolution-benchmark/datasets,target=/nbdb/data,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
+```
+
+3. Run inside the container:
+
+```
+make test
+```
