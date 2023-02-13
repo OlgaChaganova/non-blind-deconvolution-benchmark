@@ -92,3 +92,24 @@ def load_npy(filename: str, key: tp.Optional[str] = None):
     if key is not None:
         return arr.get(key)
     return arr
+
+
+def center_crop(img: np.array, new_width: int = None, new_height: int = None) -> np.array:        
+    width = img.shape[1]
+    height = img.shape[0]
+
+    if new_width is None:
+        new_width = min(width, height)
+
+    if new_height is None:
+        new_height = min(width, height)
+
+    left = int(np.ceil((width - new_width) / 2))
+    right = width - int(np.floor((width - new_width) / 2))
+
+    top = int(np.ceil((height - new_height) / 2))
+    bottom = height - int(np.floor((height - new_height) / 2))
+
+    if len(img.shape) == 2:
+        return img[top:bottom, left:right]
+    return img[top:bottom, left:right, ...]
