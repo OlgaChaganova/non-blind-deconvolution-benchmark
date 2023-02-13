@@ -28,7 +28,7 @@ models:
         params:
             n_levels: 2
             scale: 0.5
-            device: 'cpu'
+            device: 'cuda'
 
     kerunc:
         gauss_blur: False
@@ -38,7 +38,7 @@ models:
         model_path: 'models/keruncnet/noise_0pp'
         params:
             lmds: [0.005, 0.1, 0.1, 0.1, 0.1]
-            device: 'cpu'
+            device: 'cuda'
   
 dataset:
     benchmark_list_path: 'datasets/short_dataset.txt'
