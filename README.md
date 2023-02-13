@@ -101,13 +101,13 @@ If you work in VS Code, you can use this [extention for SQLLite](https://marketp
 1. Build image:
 
 ```
-docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm --no-cache
+make build
 ```
 
 2. Run container:
 
 ```
-docker run --runtime=nvidia -it --name nbdb-c --mount type=bind,source=/home/chaganovaob/edu/non-blind-deconvolution-benchmark/datasets,target=/nbdb/data,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
+make run
 ```
 
 3. Run inside the container:

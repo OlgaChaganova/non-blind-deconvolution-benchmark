@@ -4,6 +4,7 @@ COUNT_MOTION := 30
 
 DB_NAME := 'results'
 TABLE_NAME := 'all_models'
+MODELS := usrnet kerunc dwdn wiener_blind_noise
 
 
 .PHONY: install
@@ -24,3 +25,13 @@ prepare_raw_data:
 .PHONY: test
 test:
 	python src/main.py --models $(MODELS) --db_name $(DB_NAME) --table_name $(TABLE_NAME)
+
+
+.PHONY: build
+build:
+	docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm --no-cache
+
+
+.PHONY: run
+run:
+	docker run --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
