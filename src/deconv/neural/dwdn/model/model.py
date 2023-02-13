@@ -86,11 +86,11 @@ class DEBLUR(nn.Module):
 
             if level == 0:
                 input_clear = F.interpolate(clear_features, (hi, wi), mode='bilinear')
-                inp_all = input_clear
+                inp_all = input_clear.to(input.device)
                 first_scale_inblock = self.inBlock1(inp_all)
             else:
-                input_clear = F.interpolate(clear_features, (hi, wi), mode='bilinear')
-                input_pred = F.interpolate(input_pre, (hi, wi), mode='bilinear')
+                input_clear = F.interpolate(clear_features, (hi, wi), mode='bilinear').to(input.device)
+                input_pred = F.interpolate(input_pre, (hi, wi), mode='bilinear').to(input.device)
                 inp_all = torch.cat((input_clear, input_pred), 1)
                 first_scale_inblock = self.inBlock2(inp_all)
 

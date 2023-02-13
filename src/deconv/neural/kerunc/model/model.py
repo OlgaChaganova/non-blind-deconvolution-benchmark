@@ -71,11 +71,11 @@ class Db_Inv(nn.Module):
         self.lmd = lmd.view(self.chn_num, 1, 1, 1).cpu()
 
     def forward(self, y, Fker, z=None, u=None):
-        if z is None: z = torch.zeros_like(y, device='cpu')
-        if u is None: u = torch.zeros_like(y, device='cpu')
+        if z is None: z = torch.zeros_like(y, device=y.device)
+        if u is None: u = torch.zeros_like(y, device=y.device)
 
         im_num = y.shape[0]
-        xhat = torch.zeros_like(y, device='cpu')
+        xhat = torch.zeros_like(y, device=y.device)
 
         for i in range(im_num):
             shape = y[i,0,].size()[-2:]
@@ -87,8 +87,8 @@ class Db_Inv(nn.Module):
             Fy = cf.fft(y[i,0,] - u[i,0,])  # minus w to incorporate the prior approximation of noise
             Fz = cf.fft(z[i,0,]).cpu()
 
-            Fx_num = cf.mul(Fker_conj, Fy) + torch.sum(self.lmd * cf.mul(Fw_conj, cf.mul(Fw, Fz)), dim=0)
-            Fx_den = cf.abs_square(Fker[i], keepdim=True) + torch.sum(self.lmd * cf.mul(Fw_conj, Fw), dim=0)
+            Fx_num = cf.mul(Fker_conj, Fy).to(y.device) + torch.sum(self.lmd * cf.mul(Fw_conj, cf.mul(Fw, Fz)), dim=0).to(y.device)
+            Fx_den = cf.abs_square(Fker[i], keepdim=True).to(y.device) + torch.sum(self.lmd * cf.mul(Fw_conj, Fw), dim=0).to(y.device)
             Fx = cf.div(Fx_num, Fx_den)
             xhat[i,0,] = cf.ifft(Fx)
         return xhat

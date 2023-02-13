@@ -81,6 +81,7 @@ def wiener_filter_para(_input_blur):
 # --------------------------------
 # --------------------------------
 def inv_fft_kernel_est(ker_f, NSR):
+    ker_f = ker_f.to(NSR.device)
     inv_denominator = ker_f[:, :, :, :, 0] * ker_f[:, :, :, :, 0] \
                       + ker_f[:, :, :, :, 1] * ker_f[:, :, :, :, 1] + NSR
     # pseudo inverse kernel in flourier domain.

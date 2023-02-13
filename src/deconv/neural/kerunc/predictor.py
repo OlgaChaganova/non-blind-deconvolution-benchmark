@@ -63,8 +63,8 @@ class KerUncPredictor(object):
     
     def _preprocess(self, blurred_image: np.array, psf: np.array) -> tp.Tuple[torch.tensor, torch.tensor]:
         psf = torch.FloatTensor(for_fft(psf, shape=np.shape(blurred_image)))
-        psf = fft(psf).unsqueeze(0)
-        return torch.from_numpy(blurred_image).unsqueeze(dim=0).unsqueeze(dim=0), psf.unsqueeze(dim=0)
+        psf = fft(psf).unsqueeze(0).unsqueeze(dim=0)
+        return torch.from_numpy(blurred_image).unsqueeze(dim=0).unsqueeze(dim=0).to(self._device), psf.to(self._device)
     
     def _postprocess(self, model_output: tp.List[torch.tensor]) -> np.array:
         return model_output[-1].cpu().squeeze(0).squeeze(0).numpy()

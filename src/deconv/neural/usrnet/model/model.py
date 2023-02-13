@@ -5,8 +5,7 @@ import torch.fft
 
 from deconv.neural.usrnet.model import basicblock as B
 
-# for pytorch version >= 1.8.1
-
+# for pytorch version <= 1.7.1
 
 """
 # --------------------------------------------
@@ -32,14 +31,96 @@ from deconv.neural.usrnet.model import basicblock as B
 def splits(a, sf):
     '''split a into sfxsf distinct blocks
     Args:
-        a: NxCxWxH
+        a: NxCxWxHx2
         sf: split factor
     Returns:
-        b: NxCx(W/sf)x(H/sf)x(sf^2)
+        b: NxCx(W/sf)x(H/sf)x2x(sf^2)
     '''
-    b = torch.stack(torch.chunk(a, sf, dim=2), dim=4)
-    b = torch.cat(torch.chunk(b, sf, dim=3), dim=4)
+    b = torch.stack(torch.chunk(a, sf, dim=2), dim=5)
+    b = torch.cat(torch.chunk(b, sf, dim=3), dim=5)
     return b
+
+
+def c2c(x):
+    return torch.from_numpy(np.stack([np.float32(x.real), np.float32(x.imag)], axis=-1))
+
+
+def r2c(x):
+    # convert real to complex
+    return torch.stack([x, torch.zeros_like(x)], -1)
+
+
+def cdiv(x, y):
+    # complex division
+    a, b = x[..., 0], x[..., 1]
+    c, d = y[..., 0], y[..., 1]
+    cd2 = c**2 + d**2
+    return torch.stack([(a*c+b*d)/cd2, (b*c-a*d)/cd2], -1)
+
+
+def crdiv(x, y):
+    # complex/real division
+    a, b = x[..., 0], x[..., 1]
+    return torch.stack([a/y, b/y], -1)
+
+
+def csum(x, y):
+    # complex + real
+    return torch.stack([x[..., 0] + y, x[..., 1]], -1)
+
+
+def cabs(x):
+    # modulus of a complex number
+    return torch.pow(x[..., 0]**2+x[..., 1]**2, 0.5)
+
+
+def cabs2(x):
+    return x[..., 0]**2+x[..., 1]**2
+
+
+def cmul(t1, t2):
+    '''complex multiplication
+    Args:
+        t1: NxCxHxWx2, complex tensor
+        t2: NxCxHxWx2
+    Returns:
+        output: NxCxHxWx2
+    '''
+    real1, imag1 = t1[..., 0], t1[..., 1]
+    real2, imag2 = t2[..., 0], t2[..., 1]
+    return torch.stack([real1 * real2 - imag1 * imag2, real1 * imag2 + imag1 * real2], dim=-1)
+
+
+def cconj(t, inplace=False):
+    '''complex's conjugation
+    Args:
+        t: NxCxHxWx2
+    Returns:
+        output: NxCxHxWx2
+    '''
+    c = t.clone() if not inplace else t
+    c[..., 1] *= -1
+    return c
+
+
+def rfft(t):
+    # Real-to-complex Discrete Fourier Transform
+    return torch.rfft(t, 2, onesided=False)
+
+
+def irfft(t):
+    # Complex-to-real Inverse Discrete Fourier Transform
+    return torch.irfft(t, 2, onesided=False)
+
+
+def fft(t):
+    # Complex-to-complex Discrete Fourier Transform
+    return torch.fft(t, 2)
+
+
+def ifft(t):
+    # Complex-to-complex Inverse Discrete Fourier Transform
+    return torch.ifft(t, 2)
 
 
 def p2o(psf, shape):
@@ -58,9 +139,9 @@ def p2o(psf, shape):
     otf[...,:psf.shape[2],:psf.shape[3]].copy_(psf)
     for axis, axis_size in enumerate(psf.shape[2:]):
         otf = torch.roll(otf, -int(axis_size / 2), dims=axis+2)
-    otf = torch.fft.fftn(otf, dim=(-2,-1))
-    #n_ops = torch.sum(torch.tensor(psf.shape).type_as(psf) * torch.log2(torch.tensor(psf.shape).type_as(psf)))
-    #otf[..., 1][torch.abs(otf[..., 1]) < n_ops*2.22e-16] = torch.tensor(0).type_as(psf)
+    otf = torch.rfft(otf, 2, onesided=False)
+    n_ops = torch.sum(torch.tensor(psf.shape).type_as(psf) * torch.log2(torch.tensor(psf.shape).type_as(psf)))
+    otf[..., 1][torch.abs(otf[..., 1]) < n_ops*2.22e-16] = torch.tensor(0).type_as(psf)
     return otf
 
 
@@ -172,15 +253,14 @@ class DataNet(nn.Module):
         super(DataNet, self).__init__()
 
     def forward(self, x, FB, FBC, F2B, FBFy, alpha, sf):
-
-        FR = FBFy + torch.fft.fftn(alpha*x, dim=(-2,-1))
-        x1 = FB.mul(FR)
+        FR = FBFy + torch.rfft(alpha*x, 2, onesided=False)
+        x1 = cmul(FB, FR)
         FBR = torch.mean(splits(x1, sf), dim=-1, keepdim=False)
         invW = torch.mean(splits(F2B, sf), dim=-1, keepdim=False)
-        invWBR = FBR.div(invW + alpha)
-        FCBinvWBR = FBC*invWBR.repeat(1, 1, sf, sf)
-        FX = (FR-FCBinvWBR)/alpha
-        Xest = torch.real(torch.fft.ifftn(FX, dim=(-2,-1)))
+        invWBR = cdiv(FBR, csum(invW, alpha))
+        FCBinvWBR = cmul(FBC, invWBR.repeat(1, 1, sf, sf, 1))
+        FX = (FR-FCBinvWBR)/alpha.unsqueeze(-1)
+        Xest = torch.irfft(FX, 2, onesided=False)
 
         return Xest
 
@@ -236,10 +316,10 @@ class USRNet(nn.Module):
         # initialization & pre-calculation
         w, h = x.shape[-2:]
         FB = p2o(k, (w*sf, h*sf))
-        FBC = torch.conj(FB)
-        F2B = torch.pow(torch.abs(FB), 2)
+        FBC = cconj(FB, inplace=False)
+        F2B = r2c(cabs2(FB))
         STy = upsample(x, sf=sf)
-        FBFy = FBC*torch.fft.fftn(STy, dim=(-2,-1))
+        FBFy = cmul(FBC, torch.rfft(STy, 2, onesided=False))
         x = nn.functional.interpolate(x, scale_factor=sf, mode='nearest')
 
         # hyper-parameter, alpha & beta
@@ -247,6 +327,8 @@ class USRNet(nn.Module):
 
         # unfolding
         for i in range(self.n):
+            
             x = self.d(x, FB, FBC, F2B, FBFy, ab[:, i:i+1, ...], sf)
             x = self.p(torch.cat((x, ab[:, i+self.n:i+self.n+1, ...].repeat(1, 1, x.size(2), x.size(3))), dim=1))
+
         return x

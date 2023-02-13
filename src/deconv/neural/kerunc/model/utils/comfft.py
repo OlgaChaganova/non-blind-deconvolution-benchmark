@@ -24,6 +24,7 @@ def image(x):
 
 
 def mul(x, y):
+    x = x.to(y.device)
     dim = len(x.size()) - 1
     real = x[..., 0] * y[..., 0] - x[..., 1] * y[..., 1]
     image = x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]
