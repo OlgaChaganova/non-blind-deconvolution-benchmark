@@ -20,10 +20,10 @@ warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch v
 
 _AVAILABLE_MODELS = tp.Literal[
     'wiener_blind_noise',
+    'wiener_nonblind_noise',
     'usrnet',
     'dwdn',
     'kerunc',
-    # 'rgdn'
 ]
 
 
@@ -61,42 +61,73 @@ def main():
 
     if 'wiener_blind_noise' in args.models:
         models.append(
-            (lambda image, psf: wiener_gray(image, psf, **cm.wiener_blind_noise.params), 'wiener_blind_noise')
+                (
+                    {
+                        'noise': lambda image, psf: wiener_gray(image, psf, **cm.wiener_blind_noise.noise_params),
+                        'no_noise': lambda image, psf: wiener_gray(image, psf, **cm.wiener_blind_noise.no_noise_params),
+                    },
+                    'wiener_blind_noise'
+                )
+        )
+    
+    if 'wiener_nonblind_noise' in args.models:
+        models.append(
+                (
+                    {
+                        'noise': lambda image, psf: wiener_gray(image, psf, **cm.wiener_nonblind_noise.noise_params),
+                        'no_noise': lambda image, psf: wiener_gray(image, psf, **cm.wiener_nonblind_noise.no_noise_params),
+                    },
+                    'wiener_nonblind_noise'
+                )
         )
 
     if 'kerunc' in args.models:
         models.append(
-            (KerUncPredictor(
-                model_path=cm.kerunc.model_path,
-                **cm.kerunc.params,
-            ), 'kerunc')
+            (
+                {
+                    'noise': KerUncPredictor(**cm.kerunc.noise_params),
+                    'no_noise': KerUncPredictor(**cm.kerunc.no_noise_params),
+                },
+                'kerunc'
+            )
         )
 
     if 'usrnet' in args.models:
         models.append(
-            (USRNetPredictor(
-                model_path=cm.usrnet.model_path,
-                **cm.usrnet.params,
-            ), 'usrnet')
+            (
+                {
+                    'noise': USRNetPredictor(model_path=cm.usrnet.model_path, **cm.usrnet.noise_params),
+                    'no_noise': USRNetPredictor(model_path=cm.usrnet.model_path, **cm.usrnet.no_noise_params),
+                },
+                'usrnet'
+            )
         )
 
     if 'dwdn' in args.models:
         models.append(
-            (DWDNPredictor(
-                model_path=cm.dwdn.model_path,
-                **cm.dwdn.params
-            ), 'dwdn')
+            (
+                {
+                    'noise': DWDNPredictor(model_path=cm.dwdn.model_path, **cm.dwdn.noise_params),
+                    'no_noise': DWDNPredictor(model_path=cm.dwdn.model_path, **cm.dwdn.no_noise_params),
+                },
+                'dwdn'
+            )
         )
     
     if 'rgdn' in args.models:
         models.append(
-            (RGDNPredictor(
-                model_path=cm.rgdn.model_path,
-                **cm.rgdn.params
-            ), 'rgdn')
+            (
+                {
+                    'noise': RGDNPredictor(model_path=cm.rgdn.model_path, **cm.rgdn.noise_params),
+                    'no_noise': RGDNPredictor(model_path=cm.rgdn.model_path, **cm.rgdn.no_noise_params),
+                },
+                'dwdn'
+            )
         )
     
     if len(models) > 0:
+        logging.info(f'The following models were selected for testing: {models}')
+
         database = Database(db_name=args.db_name)
 
         tester = Tester(

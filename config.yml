@@ -4,9 +4,30 @@ models:
         motion_blur: True
         eye_blur: True
         RGB: True
-        params:
+
+        no_noise_params:
             balance: 1e-2
             clip: True
+
+        noise_params:
+            balance: 1e-2
+            clip: True
+        
+
+    wiener_nonblind_noise:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: True
+
+        no_noise_params:
+            balance: 1e-20
+            clip: True
+
+        noise_params:
+            balance: 5e-2
+            clip: True
+
 
     usrnet:
         gauss_blur: True
@@ -14,9 +35,15 @@ models:
         eye_blur: True
         RGB: True
         model_path: 'models/usrnet.pth'
-        params:
+
+        no_noise_params:
             scale_factor: 1
             noise_level: 0
+            device: 'cuda'
+        
+        noise_params:
+            scale_factor: 1
+            noise_level: 1
             device: 'cuda'
 
     dwdn:
@@ -25,7 +52,13 @@ models:
         eye_blur: False
         RGB: True
         model_path: 'models/model_DWDN.pt'
-        params:
+
+        no_noise_params:
+            n_levels: 2
+            scale: 0.5
+            device: 'cuda'
+
+        noise_params:
             n_levels: 2
             scale: 0.5
             device: 'cuda'
@@ -35,13 +68,19 @@ models:
         motion_blur: True
         eye_blur: False
         RGB: False
-        model_path: 'models/keruncnet/noise_0pp'
-        params:
+
+        no_noise_params:
+            model_path: 'models/keruncnet/noise_0pp'
             lmds: [0.005, 0.1, 0.1, 0.1, 0.1]
+            device: 'cuda'
+        
+        noise_params:
+            model_path: 'models/keruncnet/noise_1pp'
+            lmds: [0.005, 0.5, 0.5, 0.5, 0.5]
             device: 'cuda'
   
 dataset:
-    benchmark_list_path: 'datasets/short_dataset.txt'
+    benchmark_list_path: 'datasets/full_dataset.txt'
     blur:
         sigma: 0.01
         mu: 0

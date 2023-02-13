@@ -4,7 +4,7 @@ COUNT_MOTION := 30
 
 DB_NAME := 'results'
 TABLE_NAME := 'all_models'
-MODELS := usrnet kerunc dwdn wiener_blind_noise
+MODELS := usrnet kerunc dwdn wiener_blind_noise wiener_nonblind_noise
 
 
 .PHONY: install

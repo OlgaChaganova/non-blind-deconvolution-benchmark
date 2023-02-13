@@ -55,7 +55,7 @@ class Tester(object):
                 for model, model_name in self._models:
                     if self._model_config[model_name][blur_type]:
                         # no noise
-                        metrcics = self._calculate_metrics(model, model_name, image, blurred, kernel)
+                        metrcics = self._calculate_metrics(model['no_noise'], model_name, image, blurred, kernel)
                         cursor.execute(
                             insert_query,
                             (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', False, model_name, metrcics['ssim'], metrcics['psnr']),
@@ -63,7 +63,7 @@ class Tester(object):
                         connection.commit()
                         
                         # with noise
-                        metrcics = self._calculate_metrics(model, model_name, image, noised_blurred, kernel)
+                        metrcics = self._calculate_metrics(model['noise'], model_name, image, noised_blurred, kernel)
                         cursor.execute(
                             insert_query,
                             (blur_type, blur_dataset, kernel_path, image_dataset, image_path, 'float32', True, model_name, metrcics['ssim'], metrcics['psnr']),
