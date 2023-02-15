@@ -121,12 +121,13 @@ def main():
                     'noise': RGDNPredictor(model_path=cm.rgdn.model_path, **cm.rgdn.noise_params),
                     'no_noise': RGDNPredictor(model_path=cm.rgdn.model_path, **cm.rgdn.no_noise_params),
                 },
-                'dwdn'
+                'rgdn'
             )
         )
     
     if len(models) > 0:
-        logging.info(f'The following models were selected for testing: {models}')
+        selected_models = [model[1] for model in models]
+        logging.info(f'The following models were selected for testing: {selected_models}')
 
         database = Database(db_name=args.db_name)
 
