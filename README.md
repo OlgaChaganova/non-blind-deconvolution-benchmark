@@ -110,7 +110,13 @@ make build
 make run
 ```
 
-3. Run inside the container:
+3. Execute inside the container:
+
+```
+make exec
+```
+
+4. Run inside the container:
 
 ```
 make test
