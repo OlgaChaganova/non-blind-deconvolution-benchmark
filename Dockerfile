@@ -12,6 +12,7 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get update && apt-get -y install git \
     && apt-get install -y python3-pip
+    && apt-get install ffmpeg libsm6 libxext6  -y
 
 WORKDIR /nbdb
 
