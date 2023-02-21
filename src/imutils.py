@@ -9,11 +9,9 @@ import skimage
 
 
 def imread(img_path: str) -> np.array:
+    """Return float image if png and sRGB uint8 if jpg"""
     img_path = str(img_path) if not isinstance(img_path, str) else img_path
-    image = cv2.imread(img_path)
-    if image.shape[-1] == 3:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    return (image / 255).astype(np.float32)
+    return plt.imread(img_path)
 
 
 def imshow(image: np.array, figsize: tp.Tuple[int, int], title: tp.Optional[str] = None):
