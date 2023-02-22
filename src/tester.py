@@ -10,8 +10,12 @@ from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from imutils import imread, rgb2gray, load_npy, make_noised, gray2gray3d, crop2even
+from imutils import imread, rgb2gray, load_npy, make_noised, gray2gray3d, center_crop
 from metrics import psnr, ssim
+
+
+_MAX_UINT8 = 2 ** 8 - 1
+_MAX_UINT16 = 2 ** 16 - 1
 
 
 class Tester(object):
@@ -42,13 +46,14 @@ class Tester(object):
 
                 image = imread(image_path)
                 kernel = load_npy(kernel_path, key='psf')
-                image = crop2even(image)
-                image = rgb2gray(image)
-                blurred = convolve(image, kernel)
-                noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-
+                image = center_crop(image, 256, 256)
+                if image.ndim == 3:
+                    image = rgb2gray(image)
 
                 if '.png' in image_path:
+                    blurred = convolve(image, kernel)  # float
+                    noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])  # float
+
                     self._run_models(
                         image=image, blurred=blurred, noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
@@ -56,27 +61,37 @@ class Tester(object):
                         dicretization='float',
                     )
 
-                    blurred = float2srgb8(blurred)
-                    noised_blurred = float2srgb8(noised_blurred)
+                    image = float2srgb8(image)
+                    blurred = float2srgb8(blurred)  # uint8
+                    noised_blurred = float2srgb8(noised_blurred)  # uint8
                     self._run_models(
-                        image=image, blurred=(blurred / 255), noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
+                        image=(image / _MAX_UINT8).astype(np.float32), blurred=(blurred / _MAX_UINT8).astype(np.float32), noised_blurred=(noised_blurred / _MAX_UINT8).astype(np.float32),
+                        kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         dicretization='srgb_8bit',
                     )
 
-                    blurred = srgb2linrgb16(blurred)
-                    noised_blurred = srgb2linrgb16(noised_blurred)
+                    image = srgb2linrgb16(image)
+                    blurred = srgb2linrgb16(blurred)  # uint16
+                    noised_blurred = srgb2linrgb16(noised_blurred)  # uint16
                     self._run_models(
-                        image=image, blurred=(blurred / 65535), noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
+                        image=(image / _MAX_UINT16).astype(np.float32), blurred=(blurred / _MAX_UINT16).astype(np.float32), noised_blurred=(noised_blurred / _MAX_UINT16).astype(np.float32),
+                        kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         dicretization='linrgb_16bit',
                     )
 
                 else:
+                    if image.dtype in [np.float16, np.float32, np.float64]:  # after rgb2gray uint8 might become float
+                        image = float2srgb8(image)
+                    blurred = convolve(image, kernel).astype(np.uint8)  # uint8
+                    noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma']).astype(np.uint8)  # uint8
+
                     self._run_models(
-                        image=image, blurred=(blurred / 255), noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
+                        image=(image / _MAX_UINT8).astype(np.float32), blurred=(blurred / _MAX_UINT8).astype(np.float32), noised_blurred=(noised_blurred / _MAX_UINT8).astype(np.float32),
+                        kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         dicretization='srgb_8bit',
