@@ -137,4 +137,5 @@ dmypy.json
 /temp
 
 *.sql
+!results/*.sql
 *.db
