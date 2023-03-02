@@ -20,19 +20,22 @@ GROUP BY image_dataset;
 ---------------------------------- MODEL BENCHMARKING ----------------------------------
 
 -- Select mean metrics for different model types
-SELECT discretization, blur_type, noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
+SELECT discretization, blur_type, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 GROUP BY discretization, blur_type, noised, model;
 
 
 -- Select mean metrics for different model types for all blur types (not quite correct, because not all models were tested on gauss_blur or eye_blur)
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 GROUP BY noised, model;
 
 
 --motion blur (type of blur which was used to testing with all models)
-SELECT discretization, noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT discretization, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE blur_type == 'motion_blur'
 GROUP BY discretization, noised, model;
@@ -42,57 +45,64 @@ GROUP BY discretization, noised, model;
 
 -- Select mean metrics for different model types and FLOAT dicretization 
 -- (not quite correct, because not all models were tested on gauss_blur or eye_blur)
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE discretization == 'float'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 -- Select mean metrics for different model types + FLOAT dicretization + MOTION_BLUR
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE discretization == 'float' and blur_type == 'motion_blur'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 -- more noise (sigma 0.02)
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test_more_noise
 WHERE discretization == 'float' and blur_type == 'motion_blur'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 ----------------------------- srgb_8bit -----------------------------
 
 -- Select mean metrics for different model types and UINT8 dicretization
 -- (not quite correct, because not all models were tested on gauss_blur or eye_blur)
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE discretization == 'srgb_8bit'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 -- Select mean metrics for different model types | FLOAT dicretization | MOTION_BLUR
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE discretization == 'srgb_8bit' and blur_type == 'motion_blur'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 -- more noise (sigma 0.02)
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test_more_noise
 WHERE discretization == 'srgb_8bit' and blur_type == 'motion_blur'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 ----------------------------- linrgb_16bit -----------------------------
 
 -- Select mean metrics for different model types | FLOAT dicretization | MOTION_BLUR
-SELECT noised, model, AVG(psnr), AVG(ssim)
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
+SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
 FROM full_test
 WHERE discretization == 'linrgb_16bit' and blur_type == 'motion_blur'
-GROUP BY noised, model
+GROUP BY noised, model;
 
 
 ---------------------------------- WIENER ----------------------------------

@@ -4,7 +4,7 @@ A benchmark for non-blind deconvolution methods: classical algorithms vs SOTA ne
 
 ---
 
-## Installation
+## **Installation**
 
 1. Install requirements (python >= 3.9):
 
@@ -32,7 +32,7 @@ and unpack it:
 make prepare_raw_data
 ```
 
-## Validation
+## **Validation**
 
 Just simply run:
 ```
@@ -41,7 +41,7 @@ make test
 
 ---
 
-## Sources of data
+## **Sources of data**
 
 ### Kernels:
 
@@ -72,7 +72,7 @@ make test
 
 ---
 
-## Models and algorithms
+## **Models and algorithms**
 
 1. Wiener filter (as baseline): source code in `src/deconv/classic/wiener.py`;
 
@@ -87,16 +87,26 @@ make test
 
 Example of each model inference can be found [here](notebooks/models.ipynb).
 
+---
 
-## Tips
+## **Tips**
 
-If you work in VS Code, you can use this [extention for SQLLite](https://marketplace.visualstudio.com/items?itemName=alexcvzz.vscode-sqlite) to make your work easier.
+### SQL
 
+- If you work in VS Code, you can use this [extention for SQLLite](https://marketplace.visualstudio.com/items?itemName=alexcvzz.vscode-sqlite) to make your work easier.
+
+- To calculate statistics (e.g. std and median), [this extention](https://github.com/nalgeon/sqlean/blob/main/docs/install.md) is used here. Just download precompiled binaries suitable for your OS and unpack them to a folder (`sqlean` in my case). That's it!
+
+- SQL queries to analyze benchmarking results can be found [here](results/queries.sql).
+
+### Running the code
+
+- If old torch version (we use 1.7.1 since we took the source code for neural models as is) is not compatible with your CUDA version, you can run this code in Docker container. Instructures are below.
 
 ---
 
 
-## How to run docker container
+## **How to run docker container**
 
 1. Build image:
 
