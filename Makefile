@@ -29,9 +29,7 @@ test:
 
 .PHONY: build
 build:
-	docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm --no-cache
-
-
+	docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm
 .PHONY: run
 run:
 	docker run --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
