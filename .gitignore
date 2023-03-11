@@ -139,3 +139,7 @@ dmypy.json
 *.sql
 !results/*.sql
 *.db
+
+src/deconv/classic/fista/*
+
+.idea/

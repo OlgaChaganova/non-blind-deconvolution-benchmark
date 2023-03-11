@@ -29,6 +29,19 @@ models:
             clip: True
 
 
+    fista:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+
+        no_noise_params:
+            lambda_: 0.001
+            max_iter: 100
+
+        noise_params:
+            lambda_: 0.001
+            max_iter: 100
+        
     usrnet:
         gauss_blur: True
         motion_blur: True
