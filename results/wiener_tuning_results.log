@@ -1,0 +1,28 @@
+INFO:root:Tuning on datasets/short_dataset.txt
+INFO:root:NON_BLIND NOISE: Finding optimal balance value for noise scenario
+INFO:root:Optimal balance value for NOISE scenario is 0.05
+INFO:root:The best metrics: ssim is 0.79188277949732; psnr is 24.966217509803823
+
+INFO:root:NON_BLIND NOISE: Finding optimal balance value for no_noise scenario
+INFO:root:Optimal balance value for NO_NOISE scenario is 1e-10
+INFO:root:The best metrics: ssim is 0.9838850676982195; psnr is 59.02477158368875
+
+INFO:root:BLIND NOISE: Finding optimal balance value
+INFO:root:Optimal balance value is 0.01
+INFO:root:The best metrics: ssim is 0.8046988552551514; psnr is 25.637582301264572
+INFO:root:Full time: 1.6770042538642884 minutes
+
+
+INFO:root:Tuning on datasets/full_dataset.txt
+INFO:root:NON_BLIND NOISE: Finding optimal balance value for noise scenario
+INFO:root:Optimal balance value for NOISE scenario is 0.05
+INFO:root:The best metrics: ssim is 0.7789009159752527; psnr is 24.570401385478597
+
+INFO:root:NON_BLIND NOISE: Finding optimal balance value for no_noise scenario
+INFO:root:Optimal balance value for NO_NOISE scenario is 1e-10
+INFO:root:The best metrics: ssim is 0.9777788840368943; psnr is 55.129345462960295
+
+INFO:root:BLIND NOISE: Finding optimal balance value
+INFO:root:Optimal balance value is 0.01
+INFO:root:The best metrics: ssim is 0.7925213600643618; psnr is 25.221257952314033
+INFO:root:Full time: 12.326798351605733 minutes

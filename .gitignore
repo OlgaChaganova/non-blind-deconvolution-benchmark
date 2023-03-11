@@ -138,6 +138,7 @@ dmypy.json
 
 *.sql
 !results/*.sql
+!results/*.log
 *.db
 
 src/deconv/classic/fista/*
