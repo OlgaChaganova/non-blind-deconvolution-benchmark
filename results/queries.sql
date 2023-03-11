@@ -26,6 +26,13 @@ FROM full_test
 GROUP BY discretization, blur_type, noised, model;
 
 
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
+SELECT discretization, blur_type, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
+FROM full_test
+WHERE model IN ('wiener_nonblind_noise', 'wiener_blind_noise')
+GROUP BY discretization, blur_type, noised, model;
+
+
 -- Select mean metrics for different model types for all blur types (not quite correct, because not all models were tested on gauss_blur or eye_blur)
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
