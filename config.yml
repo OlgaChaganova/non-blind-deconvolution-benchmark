@@ -93,7 +93,13 @@ models:
             device: 'cuda'
   
 dataset:
-    benchmark_list_path: 'datasets/full_dataset.txt'
+    benchmark_list_path: 'datasets/short_dataset.txt'
     blur:
         sigma: 0.01
         mu: 0
+
+
+wiener_tuning:
+    balance_values: 
+        noise: [1e-5, 1e-4, 5e-3, 1e-3, 5e-2, 3e-2, 1e-2, 1e-1, 1, 10]
+        no_noise: [1e-20, 1e-10, 1e-2]
