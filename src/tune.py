@@ -23,7 +23,7 @@ _PSNR_NAME = 'psnr'
 _METRIC_TYPES = [_SSIM_NAME, _PSNR_NAME]
 
 
-def grid_search(
+def grid_search_non_blind_noise(
     balance_values_noise: tp.List[float],
     balance_values_no_noise: tp.List[float],
     gt_images: tp.List[str],
@@ -83,7 +83,7 @@ def grid_search(
         
     # finding average metrics for each balance value in the grid and the optimal values
     for noise_type in _NOISED_TYPES:
-        logging.info(f'Finding optimal balance value for {noise_type} scenario')
+        logging.info(f'NON_BLIND NOISE: Finding optimal balance value for {noise_type} scenario')
         max_psnr, max_ssim = 0, 0
         optimal_balance = None
         balance_values = balance_values_no_noise if noise_type == _NO_NOISE_NAME else balance_values_noise
@@ -100,6 +100,74 @@ def grid_search(
                 print(f'Optimal balance: {optimal_balance}; psnr: {max_psnr}, ssim: {max_ssim}')
         logging.info(f'Optimal balance value for {noise_type.upper()} scenario is {optimal_balance}')
         logging.info(f'The best metrics: ssim is {max_ssim}; psnr is {max_psnr}')
+
+
+def grid_search_blind_noise(
+    balance_values: tp.List[float],
+    gt_images: tp.List[str],
+    kernels: tp.List[str],
+    mu: float,
+    sigma: float,
+) -> tp.Tuple[float, float, float]:
+    """
+    Perform simple grid search for finding optimal balance value.
+
+    Args:
+        balance_values: tp.List[float]
+            List with values of balance parameters considered to be a candidate to the optimal value.
+        gt_images: tp.List[str]
+            List with paths to ground truth (sharp) images.
+        kernels: tp.List[str]
+            List with path to kernels.
+        mu: float
+            Noise parameter (mu)
+        sigma: float
+            Noise parameter (sigma)
+    Returns:
+        tp.Tuple[float, float, float]
+        Optimal balance value and corresponding ssim and psnr values.
+    """
+
+    # initialize dictionaries for metrics storage
+    metrics_per_noise = dict()
+    for metric_type in _METRIC_TYPES:
+        metrics_per_noise[metric_type] = dict()
+        metrics_per_noise[metric_type] = {balance_value: [] for balance_value in balance_values}
+
+    # calculating metrics for each pair (image, kernel) for each balance value in the grid
+    for gt_image, kernel in tqdm(zip(gt_images, kernels)):
+        gt_image = imread(gt_image)
+        kernel = load_npy(kernel, key='psf')
+
+        # float
+        blurred = convolve(gt_image, kernel)
+        noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
+        for balance_value in balance_values:
+            restored = wiener_gray(blurred, kernel, balance=balance_value, clip=True)
+            metrics_per_noise[_PSNR_NAME][balance_value].append(psnr(gt_image, restored))
+            metrics_per_noise[_SSIM_NAME][balance_value].append(ssim(gt_image, restored))
+
+            restored_noised = wiener_gray(noised_blurred, kernel, balance=balance_value, clip=True)
+            metrics_per_noise[_PSNR_NAME][balance_value].append(psnr(gt_image, restored_noised))
+            metrics_per_noise[_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
+        
+    # finding average metrics for each balance value in the grid and the optimal values
+    logging.info(f'BLIND NOISE: Finding optimal balance value')
+    max_psnr, max_ssim = 0, 0
+    optimal_balance = None
+    for balance_value in balance_values:
+        mean_psnr = np.mean(metrics_per_noise[_PSNR_NAME][balance_value])
+        mean_ssim = np.mean(metrics_per_noise[_SSIM_NAME][balance_value])
+
+        metrics_per_noise[_PSNR_NAME][balance_value] = mean_psnr
+        metrics_per_noise[_SSIM_NAME][balance_value] = mean_ssim
+
+        if mean_psnr >= max_psnr and mean_ssim >= max_ssim:
+            max_psnr, max_ssim = mean_psnr, mean_ssim
+            optimal_balance = balance_value
+            print(f'Optimal balance: {optimal_balance}; psnr: {max_psnr}, ssim: {max_ssim}')
+    logging.info(f'Optimal balance value is {optimal_balance}')
+    logging.info(f'The best metrics: ssim is {max_ssim}; psnr is {max_psnr}')
 
 
 def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
@@ -129,9 +197,16 @@ def main():
 
     logging.info(f'Tuning on {benchmark_list_path}')
     start_time = time()
-    grid_search(
+    grid_search_non_blind_noise(
         balance_values_noise=balance_values.noise,
         balance_values_no_noise=balance_values.no_noise,
+        gt_images=images_path,
+        kernels=kernels_path,
+        mu=mu,
+        sigma=sigma,
+    )
+    grid_search_blind_noise(
+        balance_values=balance_values.blind_noise,
         gt_images=images_path,
         kernels=kernels_path,
         mu=mu,

@@ -21,7 +21,7 @@ models:
         RGB: True
 
         no_noise_params:
-            balance: 1e-20
+            balance: 1e-10
             clip: True
 
         noise_params:
@@ -103,3 +103,4 @@ wiener_tuning:
     balance_values: 
         noise: [1e-5, 1e-4, 5e-3, 1e-3, 5e-2, 3e-2, 1e-2, 1e-1, 1, 10]
         no_noise: [1e-2, 1e-5, 1e-10, 1e-20]
+        blind_noise: [1e-4, 1e-3, 1e-2, 1e-1]
