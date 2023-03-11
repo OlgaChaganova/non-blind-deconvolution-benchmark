@@ -54,13 +54,13 @@ def grid_search(
 
     # initialize dictionaries for metrics storage
     metrics_per_noise = dict()
+    metrics_per_noise[_NO_NOISE_NAME] = dict()
+    metrics_per_noise[_NOISE_NAME] = dict()
     for metric_type in _METRIC_TYPES:
-        metrics_per_noise[_NO_NOISE_NAME] = dict()
         metrics_per_noise[_NO_NOISE_NAME][metric_type] = dict()
         metrics_per_noise[_NO_NOISE_NAME][metric_type] = {balance_value: [] for balance_value in balance_values_no_noise}
 
-        metrics_per_noise[_NOISE_NAME] = dict()
-        metrics_per_noise[_NO_NOISE_NAME][metric_type] = dict()
+        metrics_per_noise[_NOISE_NAME][metric_type] = dict()
         metrics_per_noise[_NOISE_NAME][metric_type] = {balance_value: [] for balance_value in balance_values_noise}
 
     # calculating metrics for each pair (image, kernel) for each balance value in the grid
@@ -76,7 +76,7 @@ def grid_search(
             metrics_per_noise[_NO_NOISE_NAME][_PSNR_NAME][balance_value].append(psnr(gt_image, restored))
             metrics_per_noise[_NO_NOISE_NAME][_SSIM_NAME][balance_value].append(ssim(gt_image, restored))
 
-        for balance_value in balance_values_no_noise:
+        for balance_value in balance_values_noise:
             restored_noised = wiener_gray(noised_blurred, kernel, balance=balance_value, clip=True)
             metrics_per_noise[_NOISE_NAME][_PSNR_NAME][balance_value].append(psnr(gt_image, restored_noised))
             metrics_per_noise[_NOISE_NAME][_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
@@ -98,7 +98,7 @@ def grid_search(
                 max_psnr, max_ssim = mean_psnr, mean_ssim
                 optimal_balance = balance_value
                 print(f'Optimal balance: {optimal_balance}; psnr: {max_psnr}, ssim: {max_ssim}')
-        logging.info(f'Optimal balance value for {noise_type} scenario is {optimal_balance}')
+        logging.info(f'Optimal balance value for {noise_type.upper()} scenario is {optimal_balance}')
         logging.info(f'The best metrics: ssim is {max_ssim}; psnr is {max_psnr}')
 
 
