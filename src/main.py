@@ -7,7 +7,7 @@ import numpy as np
 from omegaconf import OmegaConf
 
 from database import Database
-from src.deconv.classic.wiener.wiener import wiener_gray
+from deconv.classic.wiener.wiener import wiener_gray
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
