@@ -54,12 +54,15 @@ class Tester(object):
                     blurred = convolve(image, kernel)  # float
                     noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])  # float
 
-                    self._run_models(
-                        image=image, blurred=blurred, noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
-                        blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                        cursor=cursor, connection=connection,
-                        dicretization='float',
-                    )
+                    try:
+                        self._run_models(
+                            image=image, blurred=blurred, noised_blurred=noised_blurred, kernel=kernel, blur_type=blur_type, 
+                            blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
+                            cursor=cursor, connection=connection,
+                            dicretization='float',
+                        )
+                    except:
+                        continue
 
                     image = float2srgb8(image)
                     blurred = float2srgb8(blurred)  # uint8
@@ -88,14 +91,16 @@ class Tester(object):
                         image = float2srgb8(image)
                     blurred = convolve(image, kernel).astype(np.uint8)  # uint8
                     noised_blurred = make_noised(blurred, self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma']).astype(np.uint8)  # uint8
-
-                    self._run_models(
-                        image=(image / _MAX_UINT8).astype(np.float32), blurred=(blurred / _MAX_UINT8).astype(np.float32), noised_blurred=(noised_blurred / _MAX_UINT8).astype(np.float32),
-                        kernel=kernel, blur_type=blur_type, 
-                        blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                        cursor=cursor, connection=connection,
-                        dicretization='srgb_8bit',
-                    )
+                    try:
+                        self._run_models(
+                            image=(image / _MAX_UINT8).astype(np.float32), blurred=(blurred / _MAX_UINT8).astype(np.float32), noised_blurred=(noised_blurred / _MAX_UINT8).astype(np.float32),
+                            kernel=kernel, blur_type=blur_type, 
+                            blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
+                            cursor=cursor, connection=connection,
+                            dicretization='srgb_8bit',
+                        )
+                    except:
+                        continue
             cursor.close()
 
     def _run_models(
