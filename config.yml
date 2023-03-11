@@ -60,9 +60,9 @@ models:
             device: 'cuda'
 
     dwdn:
-        gauss_blur: False
+        gauss_blur: True
         motion_blur: True
-        eye_blur: False
+        eye_blur: True
         RGB: True
         model_path: 'models/model_DWDN.pt'
 
@@ -77,9 +77,9 @@ models:
             device: 'cuda'
 
     kerunc:
-        gauss_blur: False
+        gauss_blur: True
         motion_blur: True
-        eye_blur: False
+        eye_blur: True
         RGB: False
 
         no_noise_params:
