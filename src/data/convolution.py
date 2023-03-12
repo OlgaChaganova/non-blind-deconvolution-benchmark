@@ -2,7 +2,6 @@ import logging
 import typing as tp
 
 import numpy as np
-import torch
 
 
 def fft(inp: np.array, shape: tuple = None) -> np.array:
@@ -50,12 +49,8 @@ def convolve(
 
     if not np.allclose(psf.sum(), 1, rtol=1e-2, atol=1e-2):
         psf = psf / psf.sum()
-        logging.warning('PSF has sum more than 1. Normed')
+        logging.warning('Convolve: PSF has sum more than 1. Normed')
     
-    if np.ceil(image.max()) == 255:
-        image = image / image.max()
-        logging.warning('Image pixels are not in 0..1. Normed')
-
     ndim = image.ndim
 
     if ndim == 2:
