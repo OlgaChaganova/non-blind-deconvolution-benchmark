@@ -61,6 +61,11 @@ class DWDNPredictor(object):
         return self._postprocess(model_output)
     
     def _preprocess(self, blurred_image: np.array, psf: np.array) -> tp.Tuple[torch.tensor, torch.tensor]:
+        h, w = psf.shape
+        if h % 2 == 0:
+            psf = np.pad(psf, ((1, 0), (0, 0)), mode='constant')
+        if w % 2 == 0:
+            psf = np.pad(psf, ((0, 0), (1, 0)), mode='constant')
         return (
             torch.from_numpy(blurred_image).permute(2, 0, 1).unsqueeze(dim=0).to(self._device),
             torch.from_numpy(psf).unsqueeze(dim=0).unsqueeze(dim=0).to(self._device)
