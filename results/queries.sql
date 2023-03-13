@@ -119,10 +119,17 @@ ORDER BY psnr, ssim
 LIMIT 20;
 
 
+SELECT kernel, image, ssim, psnr
+FROM full_dataset_all_blur_3
+WHERE noised == 1 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
+ORDER BY psnr, ssim
+LIMIT 20;
+
+
 -- Select the WORST restoration examples for KERUNC
 SELECT kernel, image, ssim, psnr
 FROM full_dataset_all_blur_3
-WHERE noised == 0 AND discretization == 'float' and model == 'kerunc' and blur_type == 'motion_blur'
+WHERE noised == 1 AND discretization == 'float' and model == 'kerunc' and blur_type == 'motion_blur'
 ORDER BY psnr, ssim
 LIMIT 20;
 
@@ -155,5 +162,30 @@ LIMIT 20;
 SELECT blur_type, kernel, image, psnr, ssim
 FROM full_dataset_all_blur_3
 WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'gauss_blur'
+ORDER BY psnr DESC, ssim DESC
+LIMIT 20;
+
+
+-- Select the BEST restoration examples for WIENER with MOTION BLUR
+SELECT blur_type, kernel, image, psnr, ssim
+FROM full_dataset_all_blur_3
+WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
+ORDER BY psnr DESC, ssim DESC
+LIMIT 20;
+
+
+-- Select the BEST restoration examples for WIENER with MOTION BLUR
+SELECT blur_type, kernel, image, psnr, ssim
+FROM full_dataset_all_blur_3
+WHERE noised == 1 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
+ORDER BY psnr DESC, ssim DESC
+LIMIT 20;
+
+
+
+-- Select the BEST restoration examples for DWDN with MOTION BLUR
+SELECT blur_type, kernel, image, psnr, ssim
+FROM full_dataset_all_blur_3
+WHERE noised == 1 AND discretization == 'float' and model == 'dwdn' and blur_type == 'motion_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
