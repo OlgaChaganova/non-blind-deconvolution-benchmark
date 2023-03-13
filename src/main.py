@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import typing as tp
 import warnings
 
@@ -28,17 +29,26 @@ _AVAILABLE_MODELS = tp.Literal[
 
 
 def parse():
-    parser = argparse.ArgumentParser(description='Parser for nbd models testing.')
+    parser = argparse.ArgumentParser(
+        description='Parser for nbd models testing.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=os.path.join('configs', 'config.yml'),
+        help=f'Config for benchmarking.',
+    )
     parser.add_argument(
         '--models',
         nargs='+',
         default=tp.get_args(_AVAILABLE_MODELS),
-        help=f'List of models to be tested. By default, all available models: {tp.get_args(_AVAILABLE_MODELS)} will be tested.',
+        help=f'List of models to be tested. By default, all available models will be tested.',
     )
     parser.add_argument(
         '--db_name',
         type=str,
-        default='results',
+        default=os.path.join('results', 'metrics'),
         help='Database name.',
     )
     parser.add_argument(
@@ -53,7 +63,7 @@ def parse():
 def main():
     args = parse()
 
-    config = OmegaConf.load('configs/config.yml')
+    config = OmegaConf.load(args.config)
     cm = config.models
     cd = config.dataset
 
