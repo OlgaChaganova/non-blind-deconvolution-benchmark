@@ -53,7 +53,7 @@ def parse():
 def main():
     args = parse()
 
-    config = OmegaConf.load('config.yml')
+    config = OmegaConf.load('configs/config.yml')
     cm = config.models
     cd = config.dataset
 

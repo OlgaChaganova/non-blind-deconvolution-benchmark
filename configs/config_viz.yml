@@ -1,0 +1,106 @@
+models:
+    wiener_blind_noise:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: True
+
+        no_noise_params:
+            balance: 1e-2
+            clip: True
+
+        noise_params:
+            balance: 1e-2
+            clip: True
+        
+
+    wiener_nonblind_noise:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: True
+
+        no_noise_params:
+            balance: 1e-10
+            clip: True
+
+        noise_params:
+            balance: 1e-2
+            clip: True
+
+
+    fista:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+
+        no_noise_params:
+            lambda_: 0.001
+            max_iter: 100
+
+        noise_params:
+            lambda_: 0.001
+            max_iter: 100
+        
+    usrnet:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: True
+        model_path: '../models/usrnet.pth'
+
+        no_noise_params:
+            scale_factor: 1
+            noise_level: 0
+            device: 'cpu'
+        
+        noise_params:
+            scale_factor: 1
+            noise_level: 1
+            device: 'cpu'
+
+    dwdn:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: True
+        model_path: '../models/model_DWDN.pt'
+
+        no_noise_params:
+            n_levels: 2
+            scale: 0.5
+            device: 'cpu'
+
+        noise_params:
+            n_levels: 2
+            scale: 0.5
+            device: 'cpu'
+
+    kerunc:
+        gauss_blur: True
+        motion_blur: True
+        eye_blur: True
+        RGB: False
+
+        no_noise_params:
+            model_path: '../models/keruncnet/noise_0pp'
+            lmds: [0.005, 0.1, 0.1, 0.1, 0.1]
+            device: 'cpu'
+        
+        noise_params:
+            model_path: '../models/keruncnet/noise_1pp'
+            lmds: [0.005, 0.5, 0.5, 0.5, 0.5]
+            device: 'cpu'
+  
+dataset:
+    benchmark_list_path: 'datasets/full_dataset.txt'
+    blur:
+        sigma: 0.01
+        mu: 0
+
+
+wiener_tuning:
+    balance_values: 
+        noise: [1e-5, 1e-4, 5e-3, 1e-3, 5e-2, 3e-2, 1e-2, 1e-1, 1, 10]
+        no_noise: [1e-2, 1e-5, 1e-10, 1e-20]
+        blind_noise: [1e-4, 1e-3, 1e-2, 1e-1]
