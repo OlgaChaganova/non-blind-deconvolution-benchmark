@@ -13,8 +13,9 @@ def imread(img_path: str) -> np.array:
     return plt.imread(img_path)
 
 
-def imshow(image: np.array, figsize: tp.Tuple[int, int], title: tp.Optional[str] = None):
-    plt.figure(figsize=figsize)
+def imshow(image: np.array, figsize: tp.Optional[tp.Tuple[int, int]] = None, title: tp.Optional[str] = None):
+    if figsize is not None:
+        plt.figure(figsize=figsize)
     plt.imshow(image)
     plt.axis('off')
     if title is not None:

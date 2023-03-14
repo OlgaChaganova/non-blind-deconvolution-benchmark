@@ -1,20 +1,20 @@
 import numpy as np
 
 
-def float2srgb8(image: np.array) -> np.array:
-    """Conver float image (png) to 8-bit sRGB"""
-    assert image.dtype in [np.float32, np.float64]
-    return (image * 255).astype(np.uint8)
+def float2linrgb16bit(image: np.array, gamma: float = 2.2) -> np.array:
+    """Convert image in float to Linear RGB 16 bit"""
+    assert image.dtype in [np.float16, np.float32, np.float64]
+    max_uint16 = 65535
+    return (image ** gamma * max_uint16).astype(np.uint16)
 
 
-def srgb2linrgb16(image_srgb: np.array) -> np.array:
-    """Convert 8-bit sRGB to 16-bit linRGB"""
-    
-    if image_srgb.dtype == np.uint8:
-        image_srgb = image_srgb / 255
-        
-    mask = image_srgb <= 0.04045
-
-    image_srgb[mask] = image_srgb[mask] / 12.92
-    image_srgb[np.invert(mask)] = np.power((image_srgb[np.invert(mask)] + 0.055) / 1.055, 2.4)
-    return (image_srgb * 65535).astype(np.uint16)
+def linrrgb2srgb8bit(image: np.array) -> np.array:
+    """Convert image from 16 bit Linear RGB 16 bit to SRGB 8 bit """
+    assert image.dtype == np.uint16
+    max_uint16 = 65535
+    max_uint8 = 255
+    image = image / max_uint16
+    mask = image <= 0.0031308
+    image[mask] = image[mask] * 12.92
+    image[np.invert(mask)] = 1.055 * (image[np.invert(mask)] ** (1/2.4)) - 0.055
+    return (image  * max_uint8).astype(np.uint8)
