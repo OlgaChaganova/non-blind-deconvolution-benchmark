@@ -48,7 +48,7 @@ def parse():
     parser.add_argument(
         '--db_name',
         type=str,
-        default=os.path.join('results', 'metrics'),
+        default='results/metrics',
         help='Database name.',
     )
     parser.add_argument(
@@ -165,4 +165,3 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     np.random.seed(8)
     main()
-
