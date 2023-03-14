@@ -1,6 +1,12 @@
 import numpy as np
 
 
+def float2srgb8(image: np.array) -> np.array:
+    """Conver float image (png) to 8-bit sRGB"""
+    assert image.dtype in [np.float16, np.float32, np.float64]
+    return (image * 255).astype(np.uint8)
+
+
 def float2linrgb16bit(image: np.array, gamma: float = 2.2) -> np.array:
     """Convert image in float to Linear RGB 16 bit"""
     assert image.dtype in [np.float16, np.float32, np.float64]
