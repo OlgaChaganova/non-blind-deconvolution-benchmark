@@ -4,7 +4,7 @@ import typing as tp
 import numpy as np
 from tqdm import tqdm
 
-from data.convertation import float2srgb8, srgb2linrgb16
+from data.convertation import float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
 from data.convolution import convolve
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
@@ -69,31 +69,12 @@ class Tester(object):
                         dicretization='float',
                     )
 
-                    # ---- uint8 ----
-                    image = float2srgb8(image)
-                    blurred = float2srgb8(blurred)
-                    noised_blurred = float2srgb8(noised_blurred)
-                    blurred_3d = float2srgb8(blurred_3d)
-                    noised_blurred_3d = float2srgb8(noised_blurred_3d)
-
-                    blurred_images = {
-                        'no_noise': {'1d': (blurred / _MAX_UINT8).astype(np.float32), '3d': (blurred_3d / _MAX_UINT8).astype(np.float32)},
-                        'noise': {'1d': (noised_blurred / _MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / _MAX_UINT8).astype(np.float32)},
-                    }
-
-                    self._run_models(
-                        image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                        blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                        cursor=cursor, connection=connection,
-                        dicretization='srgb_8bit',
-                    )
-
-                    # ---- uint16 ----
-                    image = srgb2linrgb16(image)
-                    blurred = srgb2linrgb16(blurred)
-                    noised_blurred = srgb2linrgb16(noised_blurred)
-                    blurred_3d = srgb2linrgb16(blurred_3d)
-                    noised_blurred_3d = srgb2linrgb16(noised_blurred_3d)
+                    # ---- lin RGB uint16 ----
+                    image = float2linrgb16bit(image)
+                    blurred = float2linrgb16bit(blurred)
+                    noised_blurred = float2linrgb16bit(noised_blurred)
+                    blurred_3d = float2linrgb16bit(blurred_3d)
+                    noised_blurred_3d = float2linrgb16bit(noised_blurred_3d)
 
                     blurred_images = {
                         'no_noise': {'1d': (blurred / _MAX_UINT16).astype(np.float32), '3d': (blurred_3d / _MAX_UINT16).astype(np.float32)},
@@ -101,10 +82,29 @@ class Tester(object):
                     }
 
                     self._run_models(
-                        image=(image / _MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
+                        image=(image / _MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         dicretization='linrgb_16bit',
+                    )
+
+                    # ---- sRGB uint8 ----
+                    image = linrrgb2srgb8bit(image)
+                    blurred = linrrgb2srgb8bit(blurred)
+                    noised_blurred = linrrgb2srgb8bit(noised_blurred)
+                    blurred_3d = linrrgb2srgb8bit(blurred_3d)
+                    noised_blurred_3d = linrrgb2srgb8bit(noised_blurred_3d)
+
+                    blurred_images = {
+                        'no_noise': {'1d': (blurred / _MAX_UINT8).astype(np.float32), '3d': (blurred_3d / _MAX_UINT8).astype(np.float32)},
+                        'noise': {'1d': (noised_blurred / _MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / _MAX_UINT8).astype(np.float32)},
+                    }
+
+                    self._run_models(
+                        image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
+                        blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
+                        cursor=cursor, connection=connection,
+                        dicretization='srgb_8bit',
                     )
 
                 else:
@@ -168,13 +168,13 @@ class Tester(object):
                 connection.commit()    
 
     def _calculate_metrics(
-            self,
-            model: tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable],
-            model_name: str,
-            image: np.array, 
-            blurred_images: dict,
-            kernel: np.array,
-        ) -> dict:
+        self,
+        model: tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable],
+        model_name: str,
+        image: np.array, 
+        blurred_images: dict,
+        kernel: np.array,
+    ) -> dict:
         restored = (
             model(blurred_images['3d'], kernel)[..., 0]
             if model_name in ['usrnet', 'dwdn']
