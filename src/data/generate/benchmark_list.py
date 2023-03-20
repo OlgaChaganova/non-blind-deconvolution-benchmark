@@ -4,14 +4,14 @@ import os
 from pathlib import Path
 
 
-FULL_DATASET_FILE = 'datasets/full_dataset.txt'
-SHORT_DATASET_FILE = 'datasets/short_dataset.txt'
+FULL_DATASET_FILE = 'datasets/full_dataset_v2.txt'
+SHORT_DATASET_FILE = 'datasets/short_dataset_v2.txt'
 
 
 def parse():
     """CLI parser."""
     parser = argparse.ArgumentParser('Parser for creation of the full benchmark dataset list.')
-    parser.add_argument('--count', type=int, default=6, help='Count of gt images per kernel.')
+    parser.add_argument('--count', type=int, default=8, help='Count of gt images per kernel.')
     return parser.parse_args()
 
 
@@ -22,6 +22,12 @@ def generate_full_list():
     gt_images = {
         'bsds300': sorted(list(Path('datasets/gt/BSDS300').rglob('*.jpg'))) * mult_const,
         'sun': sorted(list(Path('datasets/gt/Sun-gray').rglob('*.png'))) * mult_const,
+        'precomp-animals': sorted(list(Path('datasets/gt/precomp/animals').rglob('*.jpg'))) * mult_const,
+        'precomp-city': sorted(list(Path('datasets/gt/precomp/city').rglob('*.jpg'))) * mult_const,
+        'precomp-faces': sorted(list(Path('datasets/gt/precomp/faces').rglob('*.jpg'))) * mult_const,
+        'precomp-icons': sorted(list(Path('datasets/gt/precomp/icons_jpg').rglob('*.png'))) * mult_const,
+        'precomp-nature': sorted(list(Path('datasets/gt/precomp/nature').rglob('*.jpg'))) * mult_const,
+        'precomp-texts': sorted(list(Path('datasets/gt/precomp/texts').rglob('*.jpg'))) * mult_const,
     }
 
     for dataset_type, files in gt_images.items():
