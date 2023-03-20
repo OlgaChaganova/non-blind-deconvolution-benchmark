@@ -69,6 +69,8 @@ make test
 
 2. [Sun et al](https://cs.brown.edu/people/lbsun/deblur2013/deblur2013iccp.html). Images are taken from [here](https://drive.google.com/drive/folders/1Mb_mhtLG6N7CwiCMBnBMlJZyaqxQM-Nl).
 
+3. Precompensation dataset [TBA]
+
 
 ---
 
