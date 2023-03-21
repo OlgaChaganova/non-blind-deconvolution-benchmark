@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 from omegaconf import OmegaConf
 
-from database import Database
+from database import DatabaseMetrics, DatabaseConfigs
 from deconv.classic.wiener.wiener import wiener_gray
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
@@ -49,7 +49,13 @@ def parse():
         '--db_name',
         type=str,
         default='results/metrics',
-        help='Database name.',
+        help='Database of metrics name.',
+    )
+    parser.add_argument(
+        '--db_config_name',
+        type=str,
+        default='results/configs',
+        help='Database of configs name.',
     )
     parser.add_argument(
         '--table_name',
@@ -139,20 +145,23 @@ def main():
         selected_models = [model[1] for model in models]
         logging.info(f'The following models were selected for testing: {selected_models}')
 
-        database = Database(db_name=args.db_name)
+        db_metrics = DatabaseMetrics(db_name=args.db_name)
+        db_metrics.create_or_connect_db()
+        db_metrics.create_table(table_name=args.table_name)
+
+        db_configs = DatabaseConfigs(db_name=args.db_config_name)
+        db_configs.create_or_connect_db()
+        db_configs.create_table(table_name=args.table_name)
+        db_configs.add(args.config, selected_models)
 
         tester = Tester(
             benchmark_list_path=cd.benchmark_list_path,
             models=models,
-            db_path=database.db_path,
+            db_path=db_metrics.db_path,
             table_name=args.table_name,
             model_config=cm,
             data_config=cd,
         )
-
-        database.create_or_connect_db()
-        database.create_table(table_name=args.table_name)
-
         tester.test()
 
         logging.info('Done!')
