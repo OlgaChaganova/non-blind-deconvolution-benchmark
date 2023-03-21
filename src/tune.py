@@ -1,4 +1,4 @@
-"""Script for tuning Wiener parameters (balance) in case on non-blind noise scenario"""
+"""Script for tuning Wiener parameters (balance) in case of non-blind noise scenario"""
 
 import logging
 import typing as tp
@@ -10,10 +10,15 @@ from omegaconf import OmegaConf
 from tqdm import tqdm 
 
 from deconv.classic.wiener.wiener import wiener_gray
+from data.convertation import float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
 from data.convolution import convolve
-from imutils import make_noised, imread, load_npy
+from imutils import make_noised, imread, load_npy, rgb2gray, center_crop
 from metrics import psnr, ssim
 
+
+_IMAGE_SIZE = 256  # required image size 
+_MAX_UINT8 = 2 ** 8 - 1
+_MAX_UINT16 = 2 ** 16 - 1
 
 _NOISE_NAME = 'noise'
 _NO_NOISE_NAME = 'no_noise'
@@ -110,7 +115,7 @@ def grid_search_blind_noise(
     sigma: float,
 ) -> tp.Tuple[float, float, float]:
     """
-    Perform simple grid search for finding optimal balance value.
+    Perform simple grid search for finding optimal balance value for the whole dataset (_single value_ for all discretizations and noise/no noise cases.).
 
     Args:
         balance_values: tp.List[float]
@@ -129,46 +134,99 @@ def grid_search_blind_noise(
     """
 
     # initialize dictionaries for metrics storage
-    metrics_per_noise = dict()
+    metrics = dict()
     for metric_type in _METRIC_TYPES:
-        metrics_per_noise[metric_type] = dict()
-        metrics_per_noise[metric_type] = {balance_value: [] for balance_value in balance_values}
+        metrics[metric_type] = {balance_value: [] for balance_value in balance_values}
 
     # calculating metrics for each pair (image, kernel) for each balance value in the grid
-    for gt_image, kernel in tqdm(zip(gt_images, kernels)):
-        gt_image = imread(gt_image)
-        kernel = load_npy(kernel, key='psf')
+    for image_path, kernel_path in tqdm(zip(gt_images, kernels)):
+        image = imread(image_path)
+        if image.ndim == 3:
+            image = rgb2gray(image)
+        image = center_crop(image, _IMAGE_SIZE, _IMAGE_SIZE)
+        kernel = load_npy(kernel_path, key='psf')
 
-        # float
-        blurred = convolve(gt_image, kernel)
-        noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
-        for balance_value in balance_values:
-            restored = wiener_gray(blurred, kernel, balance=balance_value, clip=True)
-            metrics_per_noise[_PSNR_NAME][balance_value].append(psnr(gt_image, restored))
-            metrics_per_noise[_SSIM_NAME][balance_value].append(ssim(gt_image, restored))
+        if image_path.endswith('png'):
+            # ---- float ----
+            blurred = convolve(image, kernel)
+            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
+            calc_metrics_in_blind_case(balance_values, metrics, blurred, noised_blurred, kernel, image)
+            
+            # ---- lin RGB uint16 ----
+            image = float2linrgb16bit(image)
+            blurred = float2linrgb16bit(blurred)
+            noised_blurred = float2linrgb16bit(noised_blurred)
+            calc_metrics_in_blind_case(
+                balance_values,
+                metrics,
+                (blurred / _MAX_UINT16).astype(np.float32),
+                (noised_blurred / _MAX_UINT16).astype(np.float32),
+                kernel,
+                (image / _MAX_UINT16).astype(np.float32),
+            )
 
-            restored_noised = wiener_gray(noised_blurred, kernel, balance=balance_value, clip=True)
-            metrics_per_noise[_PSNR_NAME][balance_value].append(psnr(gt_image, restored_noised))
-            metrics_per_noise[_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
-        
+            # ---- sRGB uint8 ----
+            image = linrrgb2srgb8bit(image)
+            blurred = linrrgb2srgb8bit(blurred)
+            noised_blurred = linrrgb2srgb8bit(noised_blurred)
+            calc_metrics_in_blind_case(
+                balance_values,
+                metrics,
+                (blurred / _MAX_UINT8).astype(np.float32),
+                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                kernel,
+                (image / _MAX_UINT8).astype(np.float32),
+            )
+        else:
+            # ---- sRGB uint8 ----
+            if image.dtype in [np.float16, np.float32, np.float64]:  # after rgb2gray uint8 might become float
+                image = float2srgb8(image)
+            blurred = convolve(image, kernel).astype(np.uint8)
+            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma).astype(np.uint8)
+            calc_metrics_in_blind_case(
+                balance_values,
+                metrics,
+                (blurred / _MAX_UINT8).astype(np.float32),
+                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                kernel,
+                (image / _MAX_UINT8).astype(np.float32),
+            )
+
     # finding average metrics for each balance value in the grid and the optimal values
     logging.info(f'BLIND NOISE: Finding optimal balance value')
     max_psnr, max_ssim = 0, 0
     optimal_balance = None
     for balance_value in balance_values:
-        mean_psnr = np.mean(metrics_per_noise[_PSNR_NAME][balance_value])
-        mean_ssim = np.mean(metrics_per_noise[_SSIM_NAME][balance_value])
+        mean_psnr = np.mean(metrics[_PSNR_NAME][balance_value])
+        mean_ssim = np.mean(metrics[_SSIM_NAME][balance_value])
 
-        metrics_per_noise[_PSNR_NAME][balance_value] = mean_psnr
-        metrics_per_noise[_SSIM_NAME][balance_value] = mean_ssim
+        metrics[_PSNR_NAME][balance_value] = mean_psnr
+        metrics[_SSIM_NAME][balance_value] = mean_ssim
 
-        if mean_psnr >= max_psnr and mean_ssim >= max_ssim:
+        if (mean_psnr >= max_psnr and mean_ssim >= max_ssim) or (mean_psnr >= 1.05 * max_psnr) or (mean_ssim >= 1.05 * max_ssim):
             max_psnr, max_ssim = mean_psnr, mean_ssim
             optimal_balance = balance_value
             print(f'Optimal balance: {optimal_balance}; psnr: {max_psnr}, ssim: {max_ssim}')
     logging.info(f'Optimal balance value is {optimal_balance}')
     logging.info(f'The best metrics: ssim is {max_ssim}; psnr is {max_psnr}')
 
+
+def calc_metrics_in_blind_case(
+    balance_values: tp.List[float],
+    metrics: tp.List[float],
+    blurred: np.array,
+    noised_blurred: np.array,
+    kernel: np.array,
+    gt_image: np.array,
+):
+    for balance_value in balance_values:
+        restored = wiener_gray(blurred, kernel, balance=balance_value, clip=True)
+        metrics[_PSNR_NAME][balance_value].append(psnr(gt_image, restored))
+        metrics[_SSIM_NAME][balance_value].append(ssim(gt_image, restored))
+
+        restored_noised = wiener_gray(noised_blurred, kernel, balance=balance_value, clip=True)
+        metrics[_PSNR_NAME][balance_value].append(psnr(gt_image, restored_noised))
+        metrics[_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
 
 def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
     images_path = []
@@ -177,16 +235,15 @@ def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
         next(file)
         for line in tqdm(file):
             _, _, kernel_path, _, image_path = line.strip().split(',')
-            if image_path.endswith('.png'):
-                images_path.append(image_path)
-                kernels_path.append(kernel_path)
+            images_path.append(image_path)
+            kernels_path.append(kernel_path)
     return images_path, kernels_path
 
 
 def main():
-    logging.basicConfig(filename='wiener_tuning_results.log', level=logging.INFO)
+    logging.basicConfig(filename='DEBUG_wiener_tuning_results.log', level=logging.INFO)
 
-    config = OmegaConf.load('config.yml')
+    config = OmegaConf.load('configs/config.yml')
 
     benchmark_list_path = config.dataset.benchmark_list_path
     balance_values = config.wiener_tuning.balance_values
@@ -197,14 +254,14 @@ def main():
 
     logging.info(f'Tuning on {benchmark_list_path}')
     start_time = time()
-    grid_search_non_blind_noise(
-        balance_values_noise=balance_values.noise,
-        balance_values_no_noise=balance_values.no_noise,
-        gt_images=images_path,
-        kernels=kernels_path,
-        mu=mu,
-        sigma=sigma,
-    )
+    # grid_search_non_blind_noise(
+    #     balance_values_noise=balance_values.noise,
+    #     balance_values_no_noise=balance_values.no_noise,
+    #     gt_images=images_path,
+    #     kernels=kernels_path,
+    #     mu=mu,
+    #     sigma=sigma,
+    # )
     grid_search_blind_noise(
         balance_values=balance_values.blind_noise,
         gt_images=images_path,
