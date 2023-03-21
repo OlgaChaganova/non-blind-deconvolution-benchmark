@@ -66,7 +66,7 @@ class Tester(object):
                         image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
-                        dicretization='float',
+                        discretization='float',
                     )
 
                     # ---- lin RGB uint16 ----
@@ -85,7 +85,7 @@ class Tester(object):
                         image=(image / _MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
-                        dicretization='linrgb_16bit',
+                        discretization='linrgb_16bit',
                     )
 
                     # ---- sRGB uint8 ----
@@ -104,7 +104,7 @@ class Tester(object):
                         image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
-                        dicretization='srgb_8bit',
+                        discretization='srgb_8bit',
                     )
 
                 else:
@@ -125,7 +125,7 @@ class Tester(object):
                         image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
-                        dicretization='srgb_8bit',
+                        discretization='srgb_8bit',
                     )
             cursor.close()
 
@@ -140,7 +140,7 @@ class Tester(object):
         kernel_path: str,
         image_dataset: str,
         image_path: str,
-        dicretization: str,
+        discretization: tp.Literal['float', 'linrgb_16bit', 'srgb_8bit'],
 
         cursor: tp.Any,
         connection: tp.Any,
@@ -150,12 +150,18 @@ class Tester(object):
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'''
         
         for model, model_name in self._models:
-            if self._model_config[model_name][blur_type]:                
+            if self._model_config[model_name][blur_type]:
+                # for wiener_nonblind_noise we use noise version for noise float as well as for sRGB and linRGB in cases with and without noise
+                no_noise_model = (
+                    model['noise']
+                    if model_name == 'wiener_nonblind_noise' and discretization != 'float'
+                    else model['no_noise']
+                )
                 # no noise
-                metrcics = self._calculate_metrics(model['no_noise'], model_name, image, blurred_images['no_noise'], kernel)
+                metrcics = self._calculate_metrics(no_noise_model, model_name, image, blurred_images['no_noise'], kernel)
                 cursor.execute(
                     insert_query,
-                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, dicretization, False, model_name, metrcics['ssim'], metrcics['psnr']),
+                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, discretization, False, model_name, metrcics['ssim'], metrcics['psnr']),
                 )
                 connection.commit()
                 
@@ -163,7 +169,7 @@ class Tester(object):
                 metrcics = self._calculate_metrics(model['noise'], model_name, image, blurred_images['noise'], kernel)
                 cursor.execute(
                     insert_query,
-                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, dicretization, True, model_name, metrcics['ssim'], metrcics['psnr']),
+                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, discretization, True, model_name, metrcics['ssim'], metrcics['psnr']),
                 )
                 connection.commit()    
 
