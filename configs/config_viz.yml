@@ -6,11 +6,11 @@ models:
         RGB: True
 
         no_noise_params:
-            balance: 1e-2
+            balance: 0.001
             clip: True
 
         noise_params:
-            balance: 1e-2
+            balance: 0.001
             clip: True
         
 
@@ -21,26 +21,12 @@ models:
         RGB: True
 
         no_noise_params:
-            balance: 1e-10
+            balance: 1e-8
             clip: True
 
         noise_params:
-            balance: 1e-2
+            balance: 0.005
             clip: True
-
-
-    fista:
-        gauss_blur: True
-        motion_blur: True
-        eye_blur: True
-
-        no_noise_params:
-            lambda_: 0.001
-            max_iter: 100
-
-        noise_params:
-            lambda_: 0.001
-            max_iter: 100
         
     usrnet:
         gauss_blur: True
