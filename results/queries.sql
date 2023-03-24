@@ -1,34 +1,30 @@
 -- SQLite
 -- Select all data stored in the database
 SELECT *
-FROM full_test_v2_20_03;
-
-
-SELECT *
-FROM full_test_v2_20_03;
+FROM full_test_24_03;
 
 ---------------------------------- DATASET EXPLORATION ----------------------------------
 
 -- Select blur types
 SELECT blur_type, COUNT(DISTINCT kernel)
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY blur_type;
 
 
 -- Select dicretization types
 SELECT discretization, COUNT(discretization)
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY discretization;
 
 
 -- Select images
 SELECT image_dataset, COUNT(DISTINCT image)
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY image_dataset;
 
 
 SELECT model, COUNT(image)
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY model;
 
 ---------------------------------- MODEL BENCHMARKING ----------------------------------
@@ -36,16 +32,23 @@ GROUP BY model;
 -- Select mean metrics for different model types
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
 SELECT discretization, noised, blur_type, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY discretization, noised, blur_type, model;
 
 
--- Select mean metrics only for Wiener filter
+-- -- Select mean metrics only for Wiener filter
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
 SELECT discretization, blur_type, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
-WHERE model IN ('wiener_nonblind_noise', 'wiener_blind_noise')
+FROM full_test_24_03
+WHERE model IN ('wiener_nonblind_noise', 'wiener_blind_noise') AND noised == True
 GROUP BY discretization, blur_type, noised, model;
+
+-- -- Select mean metrics only for Wiener filter
+-- SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
+-- SELECT discretization, blur_type, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
+-- FROM full_test_tuned_wiener_21_03_5
+-- WHERE model IN ('wiener_nonblind_noise', 'wiener_blind_noise') AND noised == False
+-- GROUP BY discretization, blur_type, noised, model;
 
 
 -- Select mean metrics only for Wiener filter
@@ -59,14 +62,14 @@ GROUP BY discretization, blur_type, noised, model;
 -- Select mean metrics for different model types for all blur types (not quite correct, because not all models were trained on gauss_blur or eye_blur)
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 GROUP BY noised, model;
 
 
 --motion blur (type of blur which was used to training with all models)
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT discretization, noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE blur_type == 'motion_blur'
 GROUP BY discretization, noised, model;
 
@@ -77,7 +80,7 @@ GROUP BY discretization, noised, model;
 -- (not quite correct, because not all models were tested on gauss_blur or eye_blur)
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'float'
 GROUP BY noised, model;
 
@@ -85,7 +88,7 @@ GROUP BY noised, model;
 -- Select mean metrics for different model types + FLOAT dicretization + MOTION_BLUR
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'float' and blur_type == 'motion_blur'
 GROUP BY noised, model;
 
@@ -96,7 +99,7 @@ GROUP BY noised, model;
 -- (not quite correct, because not all models were tested on gauss_blur or eye_blur)
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'srgb_8bit'
 GROUP BY noised, model;
 
@@ -104,7 +107,7 @@ GROUP BY noised, model;
 -- Select mean metrics for different model types | FLOAT dicretization | MOTION_BLUR
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'srgb_8bit' and blur_type == 'motion_blur'
 GROUP BY noised, model;
 
@@ -114,7 +117,7 @@ GROUP BY noised, model;
 -- Select mean metrics for different model types | FLOAT dicretization | MOTION_BLUR
 SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');
 SELECT noised, model, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'linrgb_16bit' and blur_type == 'motion_blur'
 GROUP BY noised, model;
 
@@ -125,21 +128,21 @@ GROUP BY noised, model;
 
 -- Select the WORST restoration examples for WIENER
 SELECT blur_type, noised, kernel, image, ssim, psnr
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE discretization == 'float' and model == 'wiener_nonblind_noise' and ssim <= 0.8 
 ORDER BY psnr, ssim
 LIMIT 20;
 
 -- Select the WORST restoration examples for WIENER
 SELECT kernel, image, ssim, psnr
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
 ORDER BY psnr, ssim
 LIMIT 20;
 
 
 SELECT kernel, image, ssim, psnr
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
 ORDER BY psnr, ssim
 LIMIT 20;
@@ -147,7 +150,7 @@ LIMIT 20;
 
 -- Select the WORST restoration examples for KERUNC
 SELECT kernel, image, ssim, psnr
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model == 'kerunc' and blur_type == 'motion_blur'
 ORDER BY psnr, ssim
 LIMIT 20;
@@ -157,21 +160,21 @@ LIMIT 20;
 
 -- float
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
 
 -- srgb_8bit
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'srgb_8bit' and model == 'wiener_nonblind_noise'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
 
 -- linrgb_16bit
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'linrgb_16bit' and model == 'wiener_nonblind_noise'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
@@ -179,7 +182,7 @@ LIMIT 20;
 
 -- Select the BEST restoration examples for WIENER with GAUSS BLUR
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'gauss_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
@@ -187,7 +190,7 @@ LIMIT 20;
 
 -- Select the BEST restoration examples for WIENER with MOTION BLUR
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
@@ -195,7 +198,7 @@ LIMIT 20;
 
 -- Select the BEST restoration examples for WIENER with MOTION BLUR
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model == 'wiener_nonblind_noise' and blur_type == 'motion_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
@@ -204,7 +207,7 @@ LIMIT 20;
 
 -- Select the BEST restoration examples for DWDN with MOTION BLUR
 SELECT blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model == 'dwdn' and blur_type == 'motion_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 20;
@@ -214,14 +217,14 @@ LIMIT 20;
 
 -- Select the BEST restoration examples for DWDN & KERUNC with GAUSS BLUR
 SELECT model blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model in ('kerunc', 'dwdn') and blur_type == 'gauss_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 10;
 
 -- Select the WORST restoration examples for DWDN & KERUNC with GAUSS BLUR
 SELECT model blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 0 AND discretization == 'float' and model in ('kerunc', 'dwdn') and blur_type == 'gauss_blur'
 ORDER BY psnr, ssim
 LIMIT 10;
@@ -229,7 +232,7 @@ LIMIT 10;
 
 -- Select the BEST restoration examples for DWDN & KERUNC with GAUSS BLUR
 SELECT model blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model in ('kerunc', 'dwdn') and blur_type == 'gauss_blur'
 ORDER BY psnr DESC, ssim DESC
 LIMIT 10;
@@ -237,7 +240,17 @@ LIMIT 10;
 
 -- Select the WORST restoration examples for DWDN & KERUNC with GAUSS BLUR
 SELECT model blur_type, kernel, image, psnr, ssim
-FROM full_test_v2_20_03
+FROM full_test_24_03
 WHERE noised == 1 AND discretization == 'float' and model in ('kerunc', 'dwdn') and blur_type == 'gauss_blur'
 ORDER BY psnr, ssim
 LIMIT 10;
+
+
+-- USRNET --
+
+-- Select mean metrics for different model types
+SELECT load_extension('edu/non-blind-deconvolution-benchmark/sqlean/stats.so');  -- IMPORTANT: you should change this path to yours
+SELECT noised, blur_type, MEDIAN(psnr), AVG(psnr), STDDEV(psnr) as 'STD(psnr)', MEDIAN(ssim), AVG(ssim), STDDEV(ssim) as 'STD(ssim)'
+FROM full_test_24_03
+WHERE model == 'usrnet'
+GROUP BY noised, blur_type;
