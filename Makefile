@@ -37,7 +37,7 @@ build:
 
 .PHONY: run
 run:
-	docker run --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
+	docker run -p 5050:5050 --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
 
 .PHONY: exec
 exec:
