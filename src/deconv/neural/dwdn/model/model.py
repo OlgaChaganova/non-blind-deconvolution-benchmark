@@ -1,3 +1,4 @@
+import numpy as np
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -64,7 +65,7 @@ class DEBLUR(nn.Module):
         self.outBlock = nn.Sequential(*OutBlock)
         self.outBlock2 = nn.Sequential(*OutBlock2)
 
-    def forward(self, input: torch.tensor, kernel: torch.tensor):
+    def forward(self, input, kernel):
         for jj in range(kernel.shape[0]):
             kernel[jj:jj+1,:,:,:] = torch.div(kernel[jj:jj+1,:,:,:], torch.sum(kernel[jj:jj+1,:,:,:]))
         feature_out = self.FeatureBlock(input)
@@ -81,8 +82,8 @@ class DEBLUR(nn.Module):
         for level in range(self.n_levels):
             scale = self.scale ** (self.n_levels - level - 1)
             _, _, h, w = input.shape
-            hi = int(round(h * scale))
-            wi = int(round(w * scale))
+            hi = int(np.round(h * scale))
+            wi = int(np.round(w * scale))
 
             if level == 0:
                 input_clear = F.interpolate(clear_features, (hi, wi), mode='bilinear')

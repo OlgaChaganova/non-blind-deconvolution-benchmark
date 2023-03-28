@@ -1,3 +1,5 @@
+import typing as tp
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +16,7 @@ class MedianPool2d(nn.Module):
          same: override padding and enforce same padding, boolean
     """
     def __init__(self, kernel_size=3, stride=1, padding=0, same=False):
-        super(MedianPool2d, self).__init__()
+        super().__init__()
         self.k = _pair(kernel_size)
         self.stride = _pair(stride)
         self.padding = _quadruple(padding)  # convert to l, r, t, b
@@ -104,7 +106,7 @@ def deconv(inv_ker_f, fft_input_blur):
  
 # --------------------------------
 # --------------------------------
-def convert_psf2otf(ker, size):
+def convert_psf2otf(ker, size: tp.List[int]):
     psf = torch.zeros(size)
     # circularly shift
     centre = ker.shape[2]//2 + 1
