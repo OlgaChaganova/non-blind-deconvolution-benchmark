@@ -1,0 +1,6 @@
+INFO:root:Evaluating blur strength for different blur types:
+INFO:root:For gauss_blur: mean PSNR: 22.535720840460197, mean SSIM: 0.7488694024391342
+INFO:root:For motion_blur: mean PSNR: 21.846753663325515, mean SSIM: 0.6996749947404015
+INFO:root:For small_eye_blur: mean PSNR: 21.410044165937336, mean SSIM: 0.7108876734755654
+INFO:root:For medium_eye_blur: mean PSNR: 17.93705448465843, mean SSIM: 0.6351190975487919
+INFO:root:For big_eye_blur: mean PSNR: 17.22730774856421, mean SSIM: 0.6298975201844449
