@@ -4,7 +4,6 @@ import typing as tp
 
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage
 
 
 def imread(img_path: str) -> np.array:
@@ -34,7 +33,7 @@ def imsshow(images: tp.List[np.array], figsize: tp.Tuple[int, int], titles: tp.O
 
 
 def rgb2gray(image: np.array) -> np.array:
-    """Convert RGB to gray image.
+    """Convert _LINEAR_ RGB to gray image.
 
     Parameters
     ----------
@@ -46,7 +45,7 @@ def rgb2gray(image: np.array) -> np.array:
     np.array
         Gray image. Shape: [height, width]
     """
-    return skimage.color.rgb2gray(image)
+    return np.dot(image[..., :3], [0.299, 0.587, 0.114])
 
 
 def gray2gray3d(image: np.array) -> np.array:
@@ -67,7 +66,7 @@ def gray2gray3d(image: np.array) -> np.array:
 
 
 def make_noised(image: np.array, mu: float, sigma: float) -> np.array:
-    return (image + (sigma * np.random.randn(*image.shape) + mu)).astype(np.float32)
+    return np.clip((image + (sigma * np.random.randn(*image.shape) + mu)).astype(np.float32), 0, 1)
 
 
 def crop2even(image: np.array) -> np.array:
