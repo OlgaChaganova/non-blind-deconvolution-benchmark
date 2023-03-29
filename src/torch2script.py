@@ -1,5 +1,11 @@
 """Converts torch nn.module to TorshScript compiled model."""
 
+"""
+TracerWarning: Converting a tensor to a Python integer might cause the trace to be incorrect.
+We can't record the data flow of Python values, so this value will be treated as a constant in the future.
+This means that the trace might not generalize to other inputs!
+"""
+
 import argparse
 import logging
 import os
@@ -44,7 +50,7 @@ def convert(
     model_params: tp.Optional[dict] = None,
 ) -> tp.Tuple[str, torch.tensor, torch.tensor]:
     
-    batch_size = 2
+    batch_size = 1
     if model_name == 'usrnet':
         model = USRNet(
             n_iter=8,
@@ -63,7 +69,7 @@ def convert(
         # outputs
         y_sample = torch.randn((batch_size, num_channels, image_size, image_size))
         psf_sample = torch.randn((batch_size, 1, 41, 41))
-        sigma = torch.tensor([1, 1]).float().view([batch_size, 1, 1, 1])
+        sigma = torch.tensor(1).float().view([batch_size, 1, 1, 1])
         scale_factor = torch.tensor(1)
         input_sample = (y_sample, psf_sample, scale_factor, sigma)
 
@@ -143,6 +149,7 @@ if __name__ == '__main__':
             model_params = None
         num_channels = 3 if cm[model_name]['RGB'] else 1
 
+        logging.info(f'Converting {model_name}...')
         ts_model_path, input_sample, output_sample = convert(
             model_name=model_name,
             model_path=model_path,
