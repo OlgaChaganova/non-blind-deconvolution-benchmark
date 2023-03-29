@@ -71,15 +71,20 @@ make test
 
 3. Precompensation dataset [TBA]
 
-There only two types of image in these datasets: PNG with floating points and JPEG with uint8 dtype. 
+
+### Discretization
+
+There only two types of image in these datasets: PNG with floating points and JPEG with uint8 dtype. Both are stored in sRGB.
+To properly model the blurring process, the convolution with PSF must be done in linear space, so the first step is to convert the floating sRGB to floating linear. The following pipeline is described [here](docs/Deconvolution%20Pipeline.drawio.pdf).
+
 
 For PNG images was applied the following pipeline:
 1. Read image in float, translate it to gray if necessary, convolve it, and then restore it;
-2. Translate groud truth image and blurred image from float to linRGB 16 bit color space, and then restore it;
-3. Translate groud truth image and blurred image from  linRGB to sRGB 8 bit color space, and then restore it.
+2. Translate groud truth image and blurred image from *lin float* to *linRGB 16 bit*, and then restore it;
+3. Translate groud truth image and blurred image from  *linRGB 16 bit* to *sRGB 8 bit*, and then restore it.
 
 For JPG images:
-1. Read image in sRGB 8 bit, translate it to gray if necessary, convolve it, and then restore it;
+1. Read image in *sRGB 8 bit*, translate it to gray if necessary, convolve it, and then restore it;
 
 
 ---
@@ -98,6 +103,16 @@ For JPG images:
 
 
 Example of each model inference can be found [here](notebooks/models.ipynb).
+
+
+
+### Testing robustness to kernels errors
+
+
+Testing was done with an algorithm from a paper
+[``Deep Learning for Handling Kernel/model Uncertainty in Image Deconvolution``](https://openaccess.thecvf.com/content_CVPR_2020/papers/Nan_Deep_Learning_for_Handling_Kernelmodel_Uncertainty_in_Image_Deconvolution_CVPR_2020_paper.pdf):
+
+![image.png](docs/images/kernel_errors.png)
 
 ---
 
@@ -144,6 +159,7 @@ make exec
 make test
 ```
 
+---
 
 ## Benchmarking results
 
