@@ -9,16 +9,13 @@ import numpy as np
 from omegaconf import OmegaConf
 from tqdm import tqdm 
 
+from constants import IMAGE_SIZE, MAX_UINT16, MAX_UINT8
 from deconv.classic.wiener.wiener import wiener_gray
 from data.convertation import float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
 from data.convolution import convolve
 from imutils import make_noised, imread, load_npy, rgb2gray, center_crop
 from metrics import psnr, ssim
 
-
-_IMAGE_SIZE = 256  # required image size 
-_MAX_UINT8 = 2 ** 8 - 1
-_MAX_UINT16 = 2 ** 16 - 1
 
 _NOISE_NAME = 'noise'
 _NO_NOISE_NAME = 'no_noise'
@@ -76,7 +73,7 @@ def grid_search_non_blind_noise(
         image = imread(image_path)
         if image.ndim == 3:
             image = rgb2gray(image)
-        image = center_crop(image, _IMAGE_SIZE, _IMAGE_SIZE)
+        image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
         kernel = load_npy(kernel_path, key='psf')
 
         if image_path.endswith('png'):
@@ -102,10 +99,10 @@ def grid_search_non_blind_noise(
                 balance_values_no_noise,
                 balance_values_noise,
                 metrics,
-                (blurred / _MAX_UINT16).astype(np.float32),
-                (noised_blurred / _MAX_UINT16).astype(np.float32),
+                (blurred / MAX_UINT16).astype(np.float32),
+                (noised_blurred / MAX_UINT16).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT16).astype(np.float32),
+                (image / MAX_UINT16).astype(np.float32),
                 type='linrgb',
             )
 
@@ -117,10 +114,10 @@ def grid_search_non_blind_noise(
                 balance_values_no_noise,
                 balance_values_noise,
                 metrics,
-                (blurred / _MAX_UINT8).astype(np.float32),
-                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                (blurred / MAX_UINT8).astype(np.float32),
+                (noised_blurred / MAX_UINT8).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT8).astype(np.float32),
+                (image / MAX_UINT8).astype(np.float32),
                 type='srgb',
             )
         else:
@@ -133,10 +130,10 @@ def grid_search_non_blind_noise(
                 balance_values_no_noise,
                 balance_values_noise,
                 metrics,
-                (blurred / _MAX_UINT8).astype(np.float32),
-                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                (blurred / MAX_UINT8).astype(np.float32),
+                (noised_blurred / MAX_UINT8).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT8).astype(np.float32),
+                (image / MAX_UINT8).astype(np.float32),
                 type='srgb',
             )
 
@@ -239,7 +236,7 @@ def grid_search_blind_noise(
         image = imread(image_path)
         if image.ndim == 3:
             image = rgb2gray(image)
-        image = center_crop(image, _IMAGE_SIZE, _IMAGE_SIZE)
+        image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
         kernel = load_npy(kernel_path, key='psf')
 
         if image_path.endswith('png'):
@@ -255,10 +252,10 @@ def grid_search_blind_noise(
             _calc_metrics_in_blind_case(
                 balance_values,
                 metrics,
-                (blurred / _MAX_UINT16).astype(np.float32),
-                (noised_blurred / _MAX_UINT16).astype(np.float32),
+                (blurred / MAX_UINT16).astype(np.float32),
+                (noised_blurred / MAX_UINT16).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT16).astype(np.float32),
+                (image / MAX_UINT16).astype(np.float32),
             )
 
             # ---- sRGB uint8 ----
@@ -268,10 +265,10 @@ def grid_search_blind_noise(
             _calc_metrics_in_blind_case(
                 balance_values,
                 metrics,
-                (blurred / _MAX_UINT8).astype(np.float32),
-                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                (blurred / MAX_UINT8).astype(np.float32),
+                (noised_blurred / MAX_UINT8).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT8).astype(np.float32),
+                (image / MAX_UINT8).astype(np.float32),
             )
         else:
             # ---- sRGB uint8 ----
@@ -282,10 +279,10 @@ def grid_search_blind_noise(
             _calc_metrics_in_blind_case(
                 balance_values,
                 metrics,
-                (blurred / _MAX_UINT8).astype(np.float32),
-                (noised_blurred / _MAX_UINT8).astype(np.float32),
+                (blurred / MAX_UINT8).astype(np.float32),
+                (noised_blurred / MAX_UINT8).astype(np.float32),
                 kernel,
-                (image / _MAX_UINT8).astype(np.float32),
+                (image / MAX_UINT8).astype(np.float32),
             )
 
     # finding average metrics for each balance value in the grid and the optimal values

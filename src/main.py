@@ -7,13 +7,13 @@ import warnings
 import numpy as np
 from omegaconf import OmegaConf
 
-from database import DatabaseMetrics, DatabaseConfigs
+from services.database import DatabaseMetrics, DatabaseConfigs
 from deconv.classic.wiener.wiener import wiener_gray
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from tester import Tester
+from services.tester import Tester
 
 
 warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch version (1.7)

@@ -4,6 +4,7 @@ import typing as tp
 import numpy as np
 from tqdm import tqdm
 
+from constants import MAX_UINT16, MAX_UINT8, IMAGE_SIZE
 from data.convertation import float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
 from data.convolution import convolve
 from deconv.neural.usrnet.predictor import USRNetPredictor
@@ -12,11 +13,6 @@ from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
 from imutils import imread, rgb2gray, load_npy, make_noised, gray2gray3d, center_crop
 from metrics import psnr, ssim
-
-
-_MAX_UINT8 = 2 ** 8 - 1
-_MAX_UINT16 = 2 ** 16 - 1
-_IMAGE_SIZE = 256  # required image size 
 
 
 class Tester(object):
@@ -47,7 +43,7 @@ class Tester(object):
 
                 image = imread(image_path)
                 kernel = load_npy(kernel_path, key='psf')
-                image = center_crop(image, _IMAGE_SIZE, _IMAGE_SIZE)
+                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
                 if image.ndim == 3:
                     image = rgb2gray(image)
 
@@ -77,12 +73,12 @@ class Tester(object):
                     noised_blurred_3d = float2linrgb16bit(noised_blurred_3d)
 
                     blurred_images = {
-                        'no_noise': {'1d': (blurred / _MAX_UINT16).astype(np.float32), '3d': (blurred_3d / _MAX_UINT16).astype(np.float32)},
-                        'noise': {'1d': (noised_blurred / _MAX_UINT16).astype(np.float32), '3d': (noised_blurred_3d / _MAX_UINT16).astype(np.float32)},
+                        'no_noise': {'1d': (blurred / MAX_UINT16).astype(np.float32), '3d': (blurred_3d / MAX_UINT16).astype(np.float32)},
+                        'noise': {'1d': (noised_blurred / MAX_UINT16).astype(np.float32), '3d': (noised_blurred_3d / MAX_UINT16).astype(np.float32)},
                     }
 
                     self._run_models(
-                        image=(image / _MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
+                        image=(image / MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         discretization='linrgb_16bit',
@@ -96,12 +92,12 @@ class Tester(object):
                     noised_blurred_3d = linrrgb2srgb8bit(noised_blurred_3d)
 
                     blurred_images = {
-                        'no_noise': {'1d': (blurred / _MAX_UINT8).astype(np.float32), '3d': (blurred_3d / _MAX_UINT8).astype(np.float32)},
-                        'noise': {'1d': (noised_blurred / _MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / _MAX_UINT8).astype(np.float32)},
+                        'no_noise': {'1d': (blurred / MAX_UINT8).astype(np.float32), '3d': (blurred_3d / MAX_UINT8).astype(np.float32)},
+                        'noise': {'1d': (noised_blurred / MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / MAX_UINT8).astype(np.float32)},
                     }
 
                     self._run_models(
-                        image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
+                        image=(image / MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         discretization='srgb_8bit',
@@ -117,12 +113,12 @@ class Tester(object):
                     blurred_3d = gray2gray3d(blurred)
                     noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma']).astype(np.uint8)
                     blurred_images = {
-                        'no_noise': {'1d': (blurred / _MAX_UINT8).astype(np.float32), '3d': (blurred_3d / _MAX_UINT8).astype(np.float32)},
-                        'noise': {'1d': (noised_blurred / _MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / _MAX_UINT8).astype(np.float32)},
+                        'no_noise': {'1d': (blurred / MAX_UINT8).astype(np.float32), '3d': (blurred_3d / MAX_UINT8).astype(np.float32)},
+                        'noise': {'1d': (noised_blurred / MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / MAX_UINT8).astype(np.float32)},
                     }
 
                     self._run_models(
-                        image=(image / _MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
+                        image=(image / MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                         blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                         cursor=cursor, connection=connection,
                         discretization='srgb_8bit',
