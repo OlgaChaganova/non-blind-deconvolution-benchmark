@@ -13,7 +13,7 @@ from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from services.tester import Tester
+from services.tester import MainTester
 
 
 warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch version (1.7)
@@ -154,7 +154,7 @@ def main():
         db_configs.create_table(table_name=args.table_name)
         db_configs.add(args.config, selected_models)
 
-        tester = Tester(
+        tester = MainTester(
             benchmark_list_path=cd.benchmark_list_path,
             models=models,
             db_path=db_metrics.db_path,
