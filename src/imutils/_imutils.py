@@ -32,7 +32,7 @@ def imsshow(images: tp.List[np.array], figsize: tp.Tuple[int, int], titles: tp.O
             axs[i].set_title(titles[i])
 
 
-def rgb2gray(image: np.array) -> np.array:
+def linrgb2gray(image: np.array) -> np.array:
     """Convert _LINEAR_ RGB to gray image.
 
     Parameters
@@ -46,6 +46,22 @@ def rgb2gray(image: np.array) -> np.array:
         Gray image. Shape: [height, width]
     """
     return np.dot(image[..., :3], [0.299, 0.587, 0.114])
+
+
+def srgb2gray(image: np.array) -> np.array:
+    """Convert sRGB to gray image.
+
+    Parameters
+    ----------
+    image : np.array
+        RGB image (3 channels). Shape: [height, width, 3]
+
+    Returns
+    -------
+    np.array
+        Gray image. Shape: [height, width]
+    """
+    return np.dot(image[..., :3], [0.2125, 0.7154, 0.0721])
 
 
 def gray2gray3d(image: np.array) -> np.array:
