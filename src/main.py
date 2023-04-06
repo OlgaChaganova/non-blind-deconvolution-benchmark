@@ -13,7 +13,7 @@ from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from services.tester import MainTester
+from services.tester import MainTester, ModelPipelineTester, RealPipileneTester
 
 
 warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch version (1.7)
@@ -34,16 +34,26 @@ def parse():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
+        '--mode',
+        type=str,
+        choices=['main', 'model_vs_real'],
+        default='main',
+        help='''Mode of benchmarking.\n
+                1) `main`:  models will be tested on the whole pipeline with convolution in linear space and all discrization types.
+                2) `model-vs-real`: models will be tested on the model pipeline (convolution in sRGB)
+                and real-life pipeline (convolution in linear space) with float discritization.'''
+    )
+    parser.add_argument(
         '--config',
         type=str,
         default=os.path.join('configs', 'config.yml'),
-        help=f'Config for benchmarking.',
+        help='Config for benchmarking.',
     )
     parser.add_argument(
         '--models',
         nargs='+',
         default=tp.get_args(_AVAILABLE_MODELS),
-        help=f'List of models to be tested. By default, all available models will be tested.',
+        help='List of models to be tested. By default, all available models will be tested.',
     )
     parser.add_argument(
         '--db_name',
@@ -145,24 +155,48 @@ def main():
         selected_models = [model[1] for model in models]
         logging.info(f'The following models were selected for testing: {selected_models}')
 
+        table_name = '_'.join([args.mode, args.table_name])
+
         db_metrics = DatabaseMetrics(db_name=args.db_name)
         db_metrics.create_or_connect_db()
-        db_metrics.create_table(table_name=args.table_name)
+        db_metrics.create_table(table_name=table_name)
 
         db_configs = DatabaseConfigs(db_name=args.db_config_name)
         db_configs.create_or_connect_db()
-        db_configs.create_table(table_name=args.table_name)
+        db_configs.create_table(table_name=table_name)
         db_configs.add(args.config, selected_models)
 
-        tester = MainTester(
-            benchmark_list_path=cd.benchmark_list_path,
-            models=models,
-            db_path=db_metrics.db_path,
-            table_name=args.table_name,
-            model_config=cm,
-            data_config=cd,
-        )
-        tester.test()
+        if args.mode == 'main':
+            tester = MainTester(
+                benchmark_list_path=cd.benchmark_list_path,
+                models=models,
+                db_path=db_metrics.db_path,
+                table_name=table_name,
+                model_config=cm,
+                data_config=cd,
+            )
+            tester.test()
+
+        elif args.mode == 'model_vs_real':
+            tester = ModelPipelineTester(
+                benchmark_list_path=cd.benchmark_list_path,
+                models=models,
+                db_path=db_metrics.db_path,
+                table_name=table_name,
+                model_config=cm,
+                data_config=cd,
+            )
+            tester.test()
+
+            tester = RealPipileneTester(
+                benchmark_list_path=cd.benchmark_list_path,
+                models=models,
+                db_path=db_metrics.db_path,
+                table_name=table_name,
+                model_config=cm,
+                data_config=cd,
+            )
+            tester.test()
 
         logging.info('Done!')
 
