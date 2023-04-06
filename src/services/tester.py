@@ -61,7 +61,7 @@ class BaseTester(object):
                 # for wiener_nonblind_noise we use noise version for noise float as well as for sRGB and linRGB in cases with and without noise
                 no_noise_model = (
                     model['noise']
-                    if model_name == 'wiener_nonblind_noise' and discretization != 'linrgb_float'
+                    if model_name == 'wiener_nonblind_noise' and discretization not in ['linrgb_float', 'srgb_float']
                     else model['no_noise']
                 )
                 # no noise
