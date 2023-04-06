@@ -9,7 +9,7 @@ from deconv.neural.rgdn.model.model import OptimizerRGDN
 
 
 def load_weights(model: nn.Module, model_path: str) -> nn.Module:
-    model.load_state_dict(torch.load(model_path)['state_dict'], strict=True)
+    model.load_state_dict(torch.load(model_path, map_location='cpu')['state_dict'], strict=True)
     logging.info('Model\'s state was loaded successfully.')
     model.eval()
     for _, v in model.named_parameters():

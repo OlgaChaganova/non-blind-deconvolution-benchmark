@@ -2,10 +2,11 @@ COUNT_EYE := 30
 COUNT_GAUSS := 30
 COUNT_MOTION := 30
 
-DB_NAME := 'results'
+DB_NAME := 'results/metrics'
 TABLE_NAME := 'all_models'
 MODELS := usrnet kerunc dwdn wiener_blind_noise wiener_nonblind_noise
 CONFIG := 'configs/config.yml'
+MODE := 'main'
 
 
 .PHONY: install
@@ -25,7 +26,7 @@ prepare_raw_data:
 
 .PHONY: test
 test:
-	python src/main.py --config $(CONFIG) --models $(MODELS) --db_name $(DB_NAME) --table_name $(TABLE_NAME)
+	python src/main.py --config $(CONFIG) --mode $(MODE) --models $(MODELS) --db_name $(DB_NAME) --table_name $(TABLE_NAME)
 
 .PHONY: test_help
 test_help:
@@ -33,11 +34,11 @@ test_help:
 
 .PHONY: build
 build:
-	docker build . -f Dockerfile -t nbdb-torch1.7.1 --force-rm
+	docker build . -f Dockerfile -t nbdb --force-rm
 
 .PHONY: run
 run:
-	docker run -p 5050:5050 --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb-torch1.7.1
+	docker run -p 5050:5050 --runtime=nvidia -it --name nbdb-c --mount type=bind,source=./datasets,target=/nbdb/datasets,bind-propagation=rslave --mount type=bind,source=./results,target=/nbdb/results,bind-propagation=rslave --entrypoint=/bin/bash nbdb
 
 .PHONY: exec
 exec:
