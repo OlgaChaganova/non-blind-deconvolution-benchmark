@@ -11,9 +11,9 @@ from tqdm import tqdm
 
 from constants import IMAGE_SIZE, MAX_UINT16, MAX_UINT8
 from deconv.classic.wiener.wiener import wiener_gray
-from data.convertation import float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
+from data.convertation import srgbf_to_linrgbf, uint8_to_float32, float_to_uint16, linrrgb16_to_srgb8 #float2linrgb16bit, float2srgb8, linrrgb2srgb8bit
 from data.convolution import convolve
-from imutils import make_noised, imread, load_npy, rgb2gray, center_crop
+from imutils import make_noised, imread, load_npy, srgb2gray, center_crop
 from metrics import psnr, ssim
 
 
@@ -71,71 +71,59 @@ def grid_search_non_blind_noise(
     # calculating metrics for each pair (image, kernel) for each balance value in the grid
     for image_path, kernel_path in tqdm(zip(gt_images, kernels)):
         image = imread(image_path)
-        if image.ndim == 3:
-            image = rgb2gray(image)
         image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+
+        if image_path.endswith('.jpg'):  # sRGB 8 bit
+            image = uint8_to_float32(image)  # sRGB float32
+        if image.ndim == 3:
+            image = srgb2gray(image)
+        image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
         kernel = load_npy(kernel_path, key='psf')
 
-        if image_path.endswith('png'):
-            # ---- float ----
-            blurred = convolve(image, kernel)
-            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
-            _calc_metrics_in_nonblind_case(
-                balance_values_no_noise,
-                balance_values_noise,
-                metrics,
-                blurred,
-                noised_blurred,
-                kernel,
-                image,
-                type='float',
-            )
-            
-            # ---- lin RGB uint16 ----
-            image = float2linrgb16bit(image)
-            blurred = float2linrgb16bit(blurred)
-            noised_blurred = float2linrgb16bit(noised_blurred)
-            _calc_metrics_in_nonblind_case(
-                balance_values_no_noise,
-                balance_values_noise,
-                metrics,
-                (blurred / MAX_UINT16).astype(np.float32),
-                (noised_blurred / MAX_UINT16).astype(np.float32),
-                kernel,
-                (image / MAX_UINT16).astype(np.float32),
-                type='linrgb',
-            )
+        # ---- linRGB float ----
+        blurred = convolve(image, kernel)
+        noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
+        _calc_metrics_in_nonblind_case(
+            balance_values_no_noise,
+            balance_values_noise,
+            metrics,
+            blurred,
+            noised_blurred,
+            kernel,
+            image,
+            type='linrgb_float',
+        )
+        
+        # ---- lin RGB uint16 ----
+        image = float_to_uint16(image)
+        blurred = float_to_uint16(blurred)
+        noised_blurred = float_to_uint16(noised_blurred)
+        _calc_metrics_in_nonblind_case(
+            balance_values_no_noise,
+            balance_values_noise,
+            metrics,
+            (blurred / MAX_UINT16).astype(np.float32),
+            (noised_blurred / MAX_UINT16).astype(np.float32),
+            kernel,
+            (image / MAX_UINT16).astype(np.float32),
+            type='linrgb_16bit',
+        )
 
-            # ---- sRGB uint8 ----
-            image = linrrgb2srgb8bit(image)
-            blurred = linrrgb2srgb8bit(blurred)
-            noised_blurred = linrrgb2srgb8bit(noised_blurred)
-            _calc_metrics_in_nonblind_case(
-                balance_values_no_noise,
-                balance_values_noise,
-                metrics,
-                (blurred / MAX_UINT8).astype(np.float32),
-                (noised_blurred / MAX_UINT8).astype(np.float32),
-                kernel,
-                (image / MAX_UINT8).astype(np.float32),
-                type='srgb',
-            )
-        else:
-            # ---- sRGB uint8 ----
-            if image.dtype in [np.float16, np.float32, np.float64]:  # after rgb2gray uint8 might become float
-                image = float2srgb8(image)
-            blurred = convolve(image, kernel).astype(np.uint8)
-            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma).astype(np.uint8)
-            _calc_metrics_in_nonblind_case(
-                balance_values_no_noise,
-                balance_values_noise,
-                metrics,
-                (blurred / MAX_UINT8).astype(np.float32),
-                (noised_blurred / MAX_UINT8).astype(np.float32),
-                kernel,
-                (image / MAX_UINT8).astype(np.float32),
-                type='srgb',
-            )
+        # ---- sRGB uint8 ----
+        image = linrrgb16_to_srgb8(image)
+        blurred = linrrgb16_to_srgb8(blurred)
+        noised_blurred = linrrgb16_to_srgb8(noised_blurred)
+        _calc_metrics_in_nonblind_case(
+            balance_values_no_noise,
+            balance_values_noise,
+            metrics,
+            (blurred / MAX_UINT8).astype(np.float32),
+            (noised_blurred / MAX_UINT8).astype(np.float32),
+            kernel,
+            (image / MAX_UINT8).astype(np.float32),
+            type='srgb_8bit',
+        )
+ 
 
     # finding average metrics for each balance value in the grid and the optimal values
     for noise_type in _NOISED_TYPES:
@@ -166,9 +154,9 @@ def _calc_metrics_in_nonblind_case(
     noised_blurred: np.array,
     kernel: np.array,
     gt_image: np.array,
-    type: tp.Literal['float', 'linrgb', 'srgb'],
+    type: tp.Literal['linrgb_float', 'linrgb_16bit', 'srgb_8bit'],
 ):
-    if type == 'float':
+    if type == 'linrgb_float':
         for balance_value in balance_values_no_noise:
             restored = wiener_gray(blurred, kernel, balance=balance_value, clip=True)
             metrics[_NO_NOISE_NAME][_PSNR_NAME][balance_value].append(psnr(gt_image, restored))
@@ -187,6 +175,7 @@ def _calc_metrics_in_nonblind_case(
             restored_noised = wiener_gray(noised_blurred, kernel, balance=balance_value, clip=True)
             metrics[_NOISE_NAME][_PSNR_NAME][balance_value].append(psnr(gt_image, restored_noised))
             metrics[_NOISE_NAME][_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
+
 
 def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
     images_path = []
@@ -234,56 +223,46 @@ def grid_search_blind_noise(
     # calculating metrics for each pair (image, kernel) for each balance value in the grid
     for image_path, kernel_path in tqdm(zip(gt_images, kernels)):
         image = imread(image_path)
-        if image.ndim == 3:
-            image = rgb2gray(image)
         image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+
+        if image_path.endswith('.jpg'):  # sRGB 8 bit
+            image = uint8_to_float32(image)  # sRGB float32
+        if image.ndim == 3:
+            image = srgb2gray(image)
+        image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
+
         kernel = load_npy(kernel_path, key='psf')
 
-        if image_path.endswith('png'):
-            # ---- float ----
-            blurred = convolve(image, kernel)
-            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
-            _calc_metrics_in_blind_case(balance_values, metrics, blurred, noised_blurred, kernel, image)
-            
-            # ---- lin RGB uint16 ----
-            image = float2linrgb16bit(image)
-            blurred = float2linrgb16bit(blurred)
-            noised_blurred = float2linrgb16bit(noised_blurred)
-            _calc_metrics_in_blind_case(
-                balance_values,
-                metrics,
-                (blurred / MAX_UINT16).astype(np.float32),
-                (noised_blurred / MAX_UINT16).astype(np.float32),
-                kernel,
-                (image / MAX_UINT16).astype(np.float32),
-            )
+        # ---- linRGB float ----
+        blurred = convolve(image, kernel)
+        noised_blurred = make_noised(blurred, mu=mu, sigma=sigma)
+        _calc_metrics_in_blind_case(balance_values, metrics, blurred, noised_blurred, kernel, image)
+        
+        # ---- lin RGB 16 bit ----
+        image = float_to_uint16(image)
+        blurred = float_to_uint16(blurred)
+        noised_blurred = float_to_uint16(noised_blurred)
+        _calc_metrics_in_blind_case(
+            balance_values,
+            metrics,
+            (blurred / MAX_UINT16).astype(np.float32),
+            (noised_blurred / MAX_UINT16).astype(np.float32),
+            kernel,
+            (image / MAX_UINT16).astype(np.float32),
+        )
 
-            # ---- sRGB uint8 ----
-            image = linrrgb2srgb8bit(image)
-            blurred = linrrgb2srgb8bit(blurred)
-            noised_blurred = linrrgb2srgb8bit(noised_blurred)
-            _calc_metrics_in_blind_case(
-                balance_values,
-                metrics,
-                (blurred / MAX_UINT8).astype(np.float32),
-                (noised_blurred / MAX_UINT8).astype(np.float32),
-                kernel,
-                (image / MAX_UINT8).astype(np.float32),
-            )
-        else:
-            # ---- sRGB uint8 ----
-            if image.dtype in [np.float16, np.float32, np.float64]:  # after rgb2gray uint8 might become float
-                image = float2srgb8(image)
-            blurred = convolve(image, kernel).astype(np.uint8)
-            noised_blurred = make_noised(blurred, mu=mu, sigma=sigma).astype(np.uint8)
-            _calc_metrics_in_blind_case(
-                balance_values,
-                metrics,
-                (blurred / MAX_UINT8).astype(np.float32),
-                (noised_blurred / MAX_UINT8).astype(np.float32),
-                kernel,
-                (image / MAX_UINT8).astype(np.float32),
-            )
+        # ---- sRGB uint8 ----
+        image = linrrgb16_to_srgb8(image)
+        blurred = linrrgb16_to_srgb8(blurred)
+        noised_blurred = linrrgb16_to_srgb8(noised_blurred)
+        _calc_metrics_in_blind_case(
+            balance_values,
+            metrics,
+            (blurred / MAX_UINT8).astype(np.float32),
+            (noised_blurred / MAX_UINT8).astype(np.float32),
+            kernel,
+            (image / MAX_UINT8).astype(np.float32),
+        )
 
     # finding average metrics for each balance value in the grid and the optimal values
     logging.info(f'BLIND NOISE: Finding optimal balance value')
@@ -327,7 +306,7 @@ def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
     kernels_path = []
     with open(benchmark_list_path, 'r+') as file:
         next(file)
-        for line in tqdm(file):
+        for line in file:
             _, _, kernel_path, _, image_path = line.strip().split(',')
             images_path.append(image_path)
             kernels_path.append(kernel_path)
