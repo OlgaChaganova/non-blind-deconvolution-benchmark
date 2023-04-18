@@ -13,7 +13,7 @@ from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from services.tester import MainTester, ModelPipelineTester, RealPipileneTester
+from services.tester import MainTester, NNPipelineTester, RealPipileneTester
 
 
 warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch version (1.7)
@@ -41,7 +41,7 @@ def parse():
         help='''Mode of benchmarking.\n
                 1) `main`:  models will be tested on the whole pipeline with convolution in linear space and all discrization types.
                 2) `model-vs-real`: models will be tested on the model pipeline (convolution in sRGB)
-                and real-life pipeline (convolution in linear space) with float discritization.'''
+                and real-life pipeline (convolution in linear space) with float discretization.'''
     )
     parser.add_argument(
         '--config',
@@ -178,7 +178,7 @@ def main():
             tester.test()
 
         elif args.mode == 'model_vs_real':
-            tester = ModelPipelineTester(
+            tester = NNPipelineTester(
                 benchmark_list_path=cd.benchmark_list_path,
                 models=models,
                 db_path=db_metrics.db_path,

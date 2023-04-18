@@ -20,6 +20,7 @@ class DatabaseMetrics(object):
     def create_table(self, table_name: str):
         sqlite_create_table_query = f'''CREATE TABLE {table_name} (
                                     id INTEGER PRIMARY KEY,
+                                    tester_type TEXT NOT NULL,
                                     blur_type TEXT NOT NULL,
                                     blur_dataset text NOT NULL,
                                     kernel text NOT NULL,

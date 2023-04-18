@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from constants import MAX_UINT16, MAX_UINT8, IMAGE_SIZE
-from data.convertation import srgbf_to_linrgbf, float_to_uint16, linrrgb16_to_srgb8, uint16_to_uint8, uint8_to_float32
+from data.convertation import srgbf_to_linrgbf, float_to_uint16, linrrgb16_to_srgb8, uint16_to_uint8, uint8_to_float32, linrgbf_to_srgbf
 from data.convolution import convolve
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
@@ -32,6 +32,7 @@ class BaseTester(object):
         self._table_name = table_name
         self._model_config = model_config
         self._data_config = data_config
+        self._tester_type = '_base'
 
     def test(self):
         ...
@@ -53,8 +54,8 @@ class BaseTester(object):
         connection: tp.Any,
     ):
         insert_query = f'''INSERT INTO {self._table_name}
-                        (blur_type, blur_dataset, kernel, image_dataset, image, discretization, noised, model, ssim, psnr) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'''
+                        (tester_type, blur_type, blur_dataset, kernel, image_dataset, image, discretization, noised, model, ssim, psnr) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'''
         
         for model, model_name in self._models:
             if self._model_config[model_name][blur_type]:
@@ -68,7 +69,10 @@ class BaseTester(object):
                 metrcics = self._calculate_metrics(no_noise_model, model_name, image, blurred_images['no_noise'], kernel)
                 cursor.execute(
                     insert_query,
-                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, discretization, False, model_name, metrcics['ssim'], metrcics['psnr']),
+                    (
+                        self._tester_type, blur_type, blur_dataset, kernel_path, image_dataset,
+                        image_path, discretization, False, model_name, metrcics['ssim'], metrcics['psnr'],
+                    ),
                 )
                 connection.commit()
                 
@@ -76,7 +80,10 @@ class BaseTester(object):
                 metrcics = self._calculate_metrics(model['noise'], model_name, image, blurred_images['noise'], kernel)
                 cursor.execute(
                     insert_query,
-                    (blur_type, blur_dataset, kernel_path, image_dataset, image_path, discretization, True, model_name, metrcics['ssim'], metrcics['psnr']),
+                    (
+                        self._tester_type, blur_type, blur_dataset, kernel_path, image_dataset,
+                        image_path, discretization, True, model_name, metrcics['ssim'], metrcics['psnr'],
+                    ),
                 )
                 connection.commit()    
 
@@ -103,9 +110,10 @@ class BaseTester(object):
 class MainTester(BaseTester):
     """
     Main tester for models evaluation:
+    @ means evaluation with that discretization
 
-    1) float sRGB - (srgb2lin) -> float linear -> linear 16 bit - (linear2srgb) -> sRGB 8 bit.
-    2) sRGB 8bit - (uint8_to_float32) -> float sRGB -> 1)
+    1) @ float sRGB - (srgb2lin) -> @ float linear -> @ linear 16 bit - (linear2srgb) -> @ sRGB 8 bit.
+    2) sRGB 8bit - (uint8_to_float32) -> @ float sRGB -> 1)
     """
     def __init__(
         self,
@@ -124,6 +132,7 @@ class MainTester(BaseTester):
             model_config,
             data_config,
         )
+        self._tester_type = 'main'
 
     def test(self):
         connection = sqlite3.connect(self._db_path)
@@ -224,11 +233,12 @@ class MainTester(BaseTester):
         cursor.close()
 
 
-class ModelPipelineTester(BaseTester):
+class NNPipelineTester(BaseTester):
     """
-    Tester for models evaluation (model pipeline):
+    Tester for models evaluation (model pipeline with convolution in non-linear space).
 
-    [sRGB 8bit - (uint8_to_float32) ->] float sRGB -> *CONVOLUTION* -> RESTORATION.
+    Pipeline:
+    [sRGB 8bit - (uint8_to_float32) ->] @ float sRGB -> *CONVOLUTION* -> RESTORATION.
     """
     def __init__(
         self,
@@ -247,6 +257,7 @@ class ModelPipelineTester(BaseTester):
             model_config,
             data_config,
         )
+        self._tester_type = 'nn'
 
     def test(self):
         connection = sqlite3.connect(self._db_path)
@@ -290,9 +301,98 @@ class ModelPipelineTester(BaseTester):
 
 class RealPipileneTester(BaseTester):
     """
-    Tester for models evaluation (real-life pipeline):
+    Tester for models evaluation (real-life pipeline with convolution in linear space).
+    Restoration algorithms are applyed to linRGB images.
 
-    [sRGB 8bit - (uint8_to_float32) ->] float sRGB - (srgb2lin) -> float linear -> *CONVOLUTION* -> RESTORATION.
+    Pipeline:
+    1) [sRGB 8bit - (uint8_to_float32) ->] float sRGB - (srgb2lin) -> @ float linear -> *CONVOLUTION* -> RESTORATION.
+    2) [sRGB 8bit - (uint8_to_float32) ->] float sRGB - (srgb2lin) ->   float linear -> *CONVOLUTION* -> *GAMMA-CORRECTION* -> @ float sRGB -> RESTORATION.
+    """
+    def __init__(
+        self,
+        benchmark_list_path: str, 
+        models: tp.List[tp.Tuple[dict, str]],
+        db_path: str,
+        table_name: str,
+        model_config: dict,
+        data_config: dict,
+    ):
+        super().__init__(
+            benchmark_list_path,
+            models,
+            db_path,
+            table_name,
+            model_config,
+            data_config,
+        )
+        self._tester_type = 'real'
+
+    def test(self):
+        connection = sqlite3.connect(self._db_path)
+        cursor = connection.cursor()
+
+        with open(self._benchmark_list_path, 'r+') as file:
+            next(file)  # skip line with headers
+            for line in tqdm(file):
+                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+
+                kernel = load_npy(kernel_path, key='psf')
+
+                image = imread(image_path)
+                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+
+                if image_path.endswith('.jpg'):  # sRGB 8 bit
+                    image = uint8_to_float32(image)  # sRGB float32
+
+                if image.ndim == 3:
+                    image = srgb2gray(image)
+
+                image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
+        
+                # ---- lin float ----
+                blurred = convolve(image, kernel)  # CONVOLUTION in LINEAR space
+                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
+                blurred_3d = gray2gray3d(blurred)
+                noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
+                blurred_images = {
+                    'no_noise': {'1d': blurred, '3d': blurred_3d},
+                    'noise': {'1d': noised_blurred, '3d': noised_blurred_3d},
+                }
+
+                # apply NN to linRGB float images
+                self._run_models(
+                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
+                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
+                    cursor=cursor, connection=connection,
+                    discretization='linrgb_float',
+                )
+                
+                # ---- sRGB float ----
+                image = linrgbf_to_srgbf(image)
+
+                blurred_images = {
+                    'no_noise': {'1d': linrgbf_to_srgbf(blurred), '3d': linrgbf_to_srgbf(blurred_3d)},
+                    'noise': {'1d': linrgbf_to_srgbf(noised_blurred), '3d': linrgbf_to_srgbf(noised_blurred_3d)},
+                }
+
+                # apply NN to sRGB float images
+                self._run_models(
+                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
+                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
+                    cursor=cursor, connection=connection,
+                    discretization='srgb_float',
+                )
+
+        cursor.close()
+
+
+class RealPipileneTesterV2(BaseTester):
+    """
+    Tester for models evaluation (real-life pipeline with convolution in linear space).
+    Restoration algorithms are applyed to sRGB images (not linear as in v1).
+
+    Pipeline:
+    [sRGB 8bit - (uint8_to_float32) ->] float sRGB - (srgb2lin) -> float linear -> *CONVOLUTION* -> *GAMMA-CORRECTION* -> @ float sRGB -> RESTORATION.
     """
     def __init__(
         self,
@@ -336,19 +436,24 @@ class RealPipileneTester(BaseTester):
         
                 # ---- lin float ----
                 blurred = convolve(image, kernel)  # CONVOLUTION in LINEAR space
-                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
                 blurred_3d = gray2gray3d(blurred)
+                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
                 noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
+
+                # ---- sRGB float ----
+                image = linrgbf_to_srgbf(image)
+
                 blurred_images = {
-                    'no_noise': {'1d': blurred, '3d': blurred_3d},
-                    'noise': {'1d': noised_blurred, '3d': noised_blurred_3d},
+                    'no_noise': {'1d': linrgbf_to_srgbf(blurred), '3d': linrgbf_to_srgbf(blurred_3d)},
+                    'noise': {'1d': linrgbf_to_srgbf(noised_blurred), '3d': linrgbf_to_srgbf(noised_blurred_3d)},
                 }
 
+                # apply NN to sRGB float images
                 self._run_models(
                     image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
                     blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
                     cursor=cursor, connection=connection,
-                    discretization='linrgb_float',
+                    discretization='srgb_float',
                 )
 
         cursor.close()
