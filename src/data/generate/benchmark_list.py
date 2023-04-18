@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 
 
-FULL_DATASET_FILE = 'datasets/full_dataset_v2.txt'
-SHORT_DATASET_FILE = 'datasets/short_dataset_v2.txt'
+FULL_DATASET_FILE = 'datasets/full_dataset.txt'
+SHORT_DATASET_FILE = 'datasets/short_dataset.txt'
 
 
 def parse():
