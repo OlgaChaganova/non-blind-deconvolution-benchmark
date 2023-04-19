@@ -4,14 +4,14 @@ import typing as tp
 import numpy as np
 from tqdm import tqdm
 
-from constants import MAX_UINT16, MAX_UINT8, IMAGE_SIZE
+from constants import IMAGE_SIZE
 from data.convertation import srgbf_to_linrgbf, float_to_uint16, linrrgb16_to_srgb8, uint16_to_uint8, uint8_to_float32, linrgbf_to_srgbf
 from data.convolution import convolve
 from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from imutils import imread, srgb2gray, load_npy, make_noised, gray2gray3d, center_crop
+from imutils import imread, srgb2gray, load_npy, make_noised, gray2gray3d, center_crop, norm_values
 from metrics import psnr, ssim
 
 
@@ -33,14 +33,40 @@ class BaseTester(object):
         self._model_config = model_config
         self._data_config = data_config
         self._tester_type = '_base'
+    
+    @classmethod
+    def get_data(cls, image_path: str, psf_path: str, image_size: int, noise_mu: float, noise_std: float) -> tp.Tuple[dict, np.ndarray]:
+        pass
 
     def test(self):
-        ...
+        connection = sqlite3.connect(self._db_path)
+        cursor = connection.cursor()
+
+        with open(self._benchmark_list_path, 'r+') as file:
+            next(file)  # skip line with headers
+            for line in tqdm(file):
+                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+
+                images, kernel = self.get_data(
+                    image_path,
+                    kernel_path,
+                    image_size=IMAGE_SIZE,
+                    noise_mu=self._data_config['blur']['mu'],
+                    noise_std=self._data_config['blur']['sigma'],
+                )
+
+                for discr_type in images.keys():
+                    self._run_models(
+                        images=images[discr_type], kernel=kernel, blur_type=blur_type, blur_dataset=blur_dataset, kernel_path=kernel_path,
+                        image_dataset=image_dataset, image_path=image_path, cursor=cursor, connection=connection,
+                        discretization=discr_type,
+                    )
+
+        cursor.close()
 
     def _run_models(
         self,
-        image: np.array,
-        blurred_images: dict,
+        images: dict,
         kernel: np.array,
 
         blur_type: str,
@@ -66,7 +92,7 @@ class BaseTester(object):
                     else model['no_noise']
                 )
                 # no noise
-                metrcics = self._calculate_metrics(no_noise_model, model_name, image, blurred_images['no_noise'], kernel)
+                metrcics = self._calculate_metrics(no_noise_model, model_name, images['image'], images['blurred_no_noise'], kernel, discretization)
                 cursor.execute(
                     insert_query,
                     (
@@ -77,7 +103,7 @@ class BaseTester(object):
                 connection.commit()
                 
                 # with noise
-                metrcics = self._calculate_metrics(model['noise'], model_name, image, blurred_images['noise'], kernel)
+                metrcics = self._calculate_metrics(model['noise'], model_name, images['image'], images['blurred_noise'], kernel, discretization)
                 cursor.execute(
                     insert_query,
                     (
@@ -94,12 +120,18 @@ class BaseTester(object):
         image: np.array, 
         blurred_images: dict,
         kernel: np.array,
+        discr_type: str,
     ) -> dict:
         restored = (
             model(blurred_images['3d'], kernel)[..., 0]
             if model_name in ['usrnet', 'dwdn']
             else model(blurred_images['1d'], kernel)
         )
+
+        restored = np.clip(restored, 0, 1)
+
+        if discr_type.startswith('srgb'):
+            restored = linrgbf_to_srgbf(restored)
 
         return {
             'ssim': ssim(image, restored),
@@ -114,6 +146,8 @@ class MainTester(BaseTester):
 
     1) @ float sRGB - (srgb2lin) -> @ float linear -> @ linear 16 bit - (linear2srgb) -> @ sRGB 8 bit.
     2) sRGB 8bit - (uint8_to_float32) -> @ float sRGB -> 1)
+
+    For sRGB images, inverse gamma correction is applied before deconvolution.
     """
     def __init__(
         self,
@@ -133,104 +167,80 @@ class MainTester(BaseTester):
             data_config,
         )
         self._tester_type = 'main'
+    
+    @classmethod
+    def get_data(cls, image_path: str, psf_path: str, image_size: int, noise_mu: float, noise_std: float) -> tp.Tuple[dict, np.ndarray]:
+        """Return images with different discretization"""
+        transformed_images = {}
 
-    def test(self):
-        connection = sqlite3.connect(self._db_path)
-        cursor = connection.cursor()
+        psf = load_npy(psf_path, key='psf')
 
-        with open(self._benchmark_list_path, 'r+') as file:
-            next(file)  # skip line with headers
-            for line in tqdm(file):
-                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+        image = imread(image_path)
+        image = center_crop(image, image_size, image_size)
 
-                kernel = load_npy(kernel_path, key='psf')
+        if image_path.endswith('.jpg'):  # sRGB 8 bit
+            image = uint8_to_float32(image)  # sRGB float
 
-                image = imread(image_path)
-                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+        if image.ndim == 3:
+            image = srgb2gray(image)  # sRGB float
 
-                if image_path.endswith('.jpg'):  # sRGB 8 bit
-                    image = uint8_to_float32(image)
+        # ----- linRGB float -----
+        image = srgbf_to_linrgbf(image)  # linRGB float
+        blurred = convolve(image, psf)  # convolution in linear space
+        blurred_3d = gray2gray3d(blurred)
+        noised_blurred = make_noised(blurred, mu=noise_mu, sigma=noise_std)
+        noised_blurred_3d = make_noised(blurred_3d, mu=noise_mu, sigma=noise_std)
 
-                if image.ndim == 3:
-                    image = srgb2gray(image)
+        transformed_images['linrgb_float'] = {
+            'image': image,
+            'blurred_noise':
+                {'1d': noised_blurred, 
+                '3d': noised_blurred_3d},
+            'blurred_no_noise':
+                {'1d': blurred, 
+                '3d': blurred_3d}
+        }
 
-                image = srgbf_to_linrgbf(image)  # convert from float sRGB to linRGB
-        
-                # ---- lin float ----
-                blurred = convolve(image, kernel)
-                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_3d = gray2gray3d(blurred)
-                noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_images = {
-                    'no_noise': {'1d': blurred, '3d': blurred_3d},
-                    'noise': {'1d': noised_blurred, '3d': noised_blurred_3d},
-                }
+        # ----- linRGB 16 bit -----
+        image = float_to_uint16(image)
+        blurred = float_to_uint16(blurred)
+        noised_blurred = float_to_uint16(noised_blurred)
+        blurred_3d = float_to_uint16(blurred_3d)
+        noised_blurred_3d = float_to_uint16(noised_blurred_3d)
 
-                self._run_models(
-                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='linrgb_float',
-                )
+        transformed_images['linrgb_16bit'] = {
+            'image': norm_values(image),
+            'blurred_noise':
+                {'1d': norm_values(noised_blurred),
+                '3d': norm_values(noised_blurred_3d)},
+            'blurred_no_noise':
+                {'1d': norm_values(blurred),
+                '3d': norm_values(noised_blurred_3d)},
+        }
 
-                # ---- lin uint16 ----
-                image = float_to_uint16(image)
-                blurred = float_to_uint16(blurred)
-                noised_blurred = float_to_uint16(noised_blurred)
-                blurred_3d = float_to_uint16(blurred_3d)
-                noised_blurred_3d = float_to_uint16(noised_blurred_3d)
+        # ---- lin RGB 8 bit ----
+        transformed_images['linrgb_8bit'] = {
+            'image': norm_values(uint16_to_uint8(image)),
+            'blurred_noise':
+                {'1d': norm_values(uint16_to_uint8(noised_blurred)),
+                '3d': norm_values(uint16_to_uint8(noised_blurred_3d))},
+            'blurred_no_noise':
+                {'1d': norm_values(uint16_to_uint8(blurred)),
+                '3d': norm_values(uint16_to_uint8(blurred_3d))},
+        }
 
-                blurred_images = {
-                    'no_noise': {'1d': (blurred / MAX_UINT16).astype(np.float32), '3d': (blurred_3d / MAX_UINT16).astype(np.float32)},
-                    'noise': {'1d': (noised_blurred / MAX_UINT16).astype(np.float32), '3d': (noised_blurred_3d / MAX_UINT16).astype(np.float32)},
-                }
+        # ---- sRGB 8 bit ----
+        transformed_images['srgb_8bit'] = {
+            'image': norm_values(linrrgb16_to_srgb8(image)),
+            'blurred_noise':
+                {'1d': srgbf_to_linrgbf(norm_values(linrrgb16_to_srgb8(noised_blurred))),
+                '3d': srgbf_to_linrgbf(norm_values(linrrgb16_to_srgb8(noised_blurred_3d)))},
+            'blurred_no_noise':
+                {'1d': srgbf_to_linrgbf(norm_values(linrrgb16_to_srgb8(blurred))),  # translate to linRGB for correct deconvolution
+                '3d': srgbf_to_linrgbf(norm_values(linrrgb16_to_srgb8(blurred_3d)))},  # translate to linRGB for correct deconvolution
+        }
 
-                self._run_models(
-                    image=(image / MAX_UINT16).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='linrgb_16bit',
-                )
-
-                # ---- lin RGB uint8 ----
-                image_lin8 = uint16_to_uint8(image)
-                blurred_lin8 = uint16_to_uint8(blurred)
-                noised_blurred_lin8 = uint16_to_uint8(noised_blurred)
-                blurred_3d_lin8 = uint16_to_uint8(blurred_3d)
-                noised_blurred_3d_lin8 = uint16_to_uint8(noised_blurred_3d)
-
-                blurred_images = {
-                    'no_noise': {'1d': (blurred_lin8 / MAX_UINT8).astype(np.float32), '3d': (blurred_3d_lin8 / MAX_UINT8).astype(np.float32)},
-                    'noise': {'1d': (noised_blurred_lin8 / MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d_lin8 / MAX_UINT8).astype(np.float32)},
-                }
-
-                self._run_models(
-                    image=(image_lin8 / MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='linrgb_8bit',
-                )
-
-                # ---- sRGB uint8 ----
-                image = linrrgb16_to_srgb8(image)
-                blurred = linrrgb16_to_srgb8(blurred)
-                noised_blurred = linrrgb16_to_srgb8(noised_blurred)
-                blurred_3d = linrrgb16_to_srgb8(blurred_3d)
-                noised_blurred_3d = linrrgb16_to_srgb8(noised_blurred_3d)
-
-                blurred_images = {
-                    'no_noise': {'1d': (blurred / MAX_UINT8).astype(np.float32), '3d': (blurred_3d / MAX_UINT8).astype(np.float32)},
-                    'noise': {'1d': (noised_blurred / MAX_UINT8).astype(np.float32), '3d': (noised_blurred_3d / MAX_UINT8).astype(np.float32)},
-                }
-
-                self._run_models(
-                    image=(image / MAX_UINT8).astype(np.float32), blurred_images=blurred_images, kernel=kernel, blur_type=blur_type,
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='srgb_8bit',
-                )
-
-        cursor.close()
+        return transformed_images, psf
 
 
 class NNPipelineTester(BaseTester):
@@ -258,45 +268,40 @@ class NNPipelineTester(BaseTester):
             data_config,
         )
         self._tester_type = 'nn'
+    
+    @classmethod
+    def get_data(cls, image_path: str, psf_path: str, image_size: int, noise_mu: float, noise_std: float) -> tp.Tuple[dict, np.ndarray]:
+        """Return images with different discretization"""
+        transformed_images = {}
 
-    def test(self):
-        connection = sqlite3.connect(self._db_path)
-        cursor = connection.cursor()
+        psf = load_npy(psf_path, key='psf')
 
-        with open(self._benchmark_list_path, 'r+') as file:
-            next(file)  # skip line with headers
-            for line in tqdm(file):
-                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+        image = imread(image_path)
+        image = center_crop(image, image_size, image_size)
 
-                kernel = load_npy(kernel_path, key='psf')
+        if image_path.endswith('.jpg'):  # sRGB 8 bit
+            image = uint8_to_float32(image)  # sRGB float32
 
-                image = imread(image_path)
-                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
-
-                if image_path.endswith('.jpg'):  # sRGB 8 bit
-                    image = uint8_to_float32(image)  # sRGB float32
-
-                if image.ndim == 3:
-                    image = srgb2gray(image)
-                
-                blurred = convolve(image, kernel)  # CONVOLUTION in NON-LINEAR space
+        if image.ndim == 3:
+            image = srgb2gray(image)
         
-                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_3d = gray2gray3d(blurred)
-                noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_images = {
-                    'no_noise': {'1d': blurred, '3d': blurred_3d},
-                    'noise': {'1d': noised_blurred, '3d': noised_blurred_3d},
-                }
+        blurred = convolve(image, psf)  # CONVOLUTION in NON-LINEAR space
+        blurred_3d = gray2gray3d(blurred)
 
-                self._run_models(
-                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='srgb_float',
-                )
+        noised_blurred = make_noised(blurred, mu=noise_mu, sigma=noise_std)
+        noised_blurred_3d = make_noised(blurred_3d, mu=noise_mu, sigma=noise_std)
 
-        cursor.close()
+        transformed_images['srgb_float'] = {
+            'image': image,
+            'blurred_noise':
+                {'1d': noised_blurred, 
+                '3d': noised_blurred_3d},
+            'blurred_no_noise':
+                {'1d': blurred, 
+                '3d': blurred_3d}
+        }
+
+        return transformed_images, psf
 
 
 class RealPipileneTester(BaseTester):
@@ -326,134 +331,71 @@ class RealPipileneTester(BaseTester):
             data_config,
         )
         self._tester_type = 'real'
+    
+    @classmethod
+    def get_data(cls, image_path: str, psf_path: str, image_size: int, noise_mu: float, noise_std: float) -> tp.Tuple[dict, np.ndarray]:
+        transformed_images = {}
 
-    def test(self):
-        connection = sqlite3.connect(self._db_path)
-        cursor = connection.cursor()
+        kernel = load_npy(psf_path, key='psf')
 
-        with open(self._benchmark_list_path, 'r+') as file:
-            next(file)  # skip line with headers
-            for line in tqdm(file):
-                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+        image = imread(image_path)
+        image = center_crop(image, image_size, image_size)
 
-                kernel = load_npy(kernel_path, key='psf')
+        if image_path.endswith('.jpg'):  # sRGB 8 bit
+            image = uint8_to_float32(image)  # sRGB float32
 
-                image = imread(image_path)
-                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+        if image.ndim == 3:
+            image = srgb2gray(image)
 
-                if image_path.endswith('.jpg'):  # sRGB 8 bit
-                    image = uint8_to_float32(image)  # sRGB float32
+        image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
 
-                if image.ndim == 3:
-                    image = srgb2gray(image)
+        # ---- lin float ----
+        blurred = convolve(image, kernel)  # CONVOLUTION in LINEAR space
+        noised_blurred = make_noised(blurred, mu=noise_mu, sigma=noise_std)
+        blurred_3d = gray2gray3d(blurred)
+        noised_blurred_3d = make_noised(blurred_3d, mu=noise_mu, sigma=noise_std)
 
-                image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
-        
-                # ---- lin float ----
-                blurred = convolve(image, kernel)  # CONVOLUTION in LINEAR space
-                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_3d = gray2gray3d(blurred)
-                noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                blurred_images = {
-                    'no_noise': {'1d': blurred, '3d': blurred_3d},
-                    'noise': {'1d': noised_blurred, '3d': noised_blurred_3d},
-                }
+        transformed_images['linrgb_float'] = {
+            'image': image,
+            'blurred_noise':
+                {'1d': noised_blurred, 
+                '3d': noised_blurred_3d},
+            'blurred_no_noise':
+                {'1d': blurred, 
+                '3d': blurred_3d}
+        }
 
-                # apply NN to linRGB float images
-                self._run_models(
-                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='linrgb_float',
-                )
-                
-                # ---- sRGB float ----
-                image = linrgbf_to_srgbf(image)
+        transformed_images['srgb_float'] = {
+            'image': linrgbf_to_srgbf(image),
+            'blurred_noise':
+                {'1d': linrgbf_to_srgbf(noised_blurred), 
+                '3d': linrgbf_to_srgbf(noised_blurred_3d)},
+            'blurred_no_noise':
+                {'1d': linrgbf_to_srgbf(blurred), 
+                '3d': linrgbf_to_srgbf(blurred_3d)}
+        }
 
-                blurred_images = {
-                    'no_noise': {'1d': linrgbf_to_srgbf(blurred), '3d': linrgbf_to_srgbf(blurred_3d)},
-                    'noise': {'1d': linrgbf_to_srgbf(noised_blurred), '3d': linrgbf_to_srgbf(noised_blurred_3d)},
-                }
+        return transformed_images
 
-                # apply NN to sRGB float images
-                self._run_models(
-                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='srgb_float',
-                )
-
-        cursor.close()
-
-
-class RealPipileneTesterV2(BaseTester):
-    """
-    Tester for models evaluation (real-life pipeline with convolution in linear space).
-    Restoration algorithms are applyed to sRGB images (not linear as in v1).
-
-    Pipeline:
-    [sRGB 8bit - (uint8_to_float32) ->] float sRGB - (srgb2lin) -> float linear -> *CONVOLUTION* -> *GAMMA-CORRECTION* -> @ float sRGB -> RESTORATION.
-    """
-    def __init__(
+    def _calculate_metrics(
         self,
-        benchmark_list_path: str, 
-        models: tp.List[tp.Tuple[dict, str]],
-        db_path: str,
-        table_name: str,
-        model_config: dict,
-        data_config: dict,
-    ):
-        super().__init__(
-            benchmark_list_path,
-            models,
-            db_path,
-            table_name,
-            model_config,
-            data_config,
+        model: tp.Union[USRNetPredictor, DWDNPredictor, KerUncPredictor, RGDNPredictor, tp.Callable],
+        model_name: str,
+        image: np.array, 
+        blurred_images: dict,
+        kernel: np.array,
+        discr_type: str,
+    ) -> dict:
+        restored = (
+            model(blurred_images['3d'], kernel)[..., 0]
+            if model_name in ['usrnet', 'dwdn']
+            else model(blurred_images['1d'], kernel)
         )
 
-    def test(self):
-        connection = sqlite3.connect(self._db_path)
-        cursor = connection.cursor()
+        # no inverse gamma correction for blurred sRGB images
 
-        with open(self._benchmark_list_path, 'r+') as file:
-            next(file)  # skip line with headers
-            for line in tqdm(file):
-                blur_type, blur_dataset, kernel_path, image_dataset, image_path = line.strip().split(',')
+        return {
+            'ssim': ssim(image, restored),
+            'psnr': psnr(image, restored)
+        }
 
-                kernel = load_npy(kernel_path, key='psf')
-
-                image = imread(image_path)
-                image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
-
-                if image_path.endswith('.jpg'):  # sRGB 8 bit
-                    image = uint8_to_float32(image)  # sRGB float32
-
-                if image.ndim == 3:
-                    image = srgb2gray(image)
-
-                image = srgbf_to_linrgbf(image)  # convert from float sRGB to float linRGB
-        
-                # ---- lin float ----
-                blurred = convolve(image, kernel)  # CONVOLUTION in LINEAR space
-                blurred_3d = gray2gray3d(blurred)
-                noised_blurred = make_noised(blurred, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-                noised_blurred_3d = make_noised(blurred_3d, mu=self._data_config['blur']['mu'], sigma=self._data_config['blur']['sigma'])
-
-                # ---- sRGB float ----
-                image = linrgbf_to_srgbf(image)
-
-                blurred_images = {
-                    'no_noise': {'1d': linrgbf_to_srgbf(blurred), '3d': linrgbf_to_srgbf(blurred_3d)},
-                    'noise': {'1d': linrgbf_to_srgbf(noised_blurred), '3d': linrgbf_to_srgbf(noised_blurred_3d)},
-                }
-
-                # apply NN to sRGB float images
-                self._run_models(
-                    image=image, blurred_images=blurred_images, kernel=kernel, blur_type=blur_type, 
-                    blur_dataset=blur_dataset, kernel_path=kernel_path, image_dataset=image_dataset, image_path=image_path,
-                    cursor=cursor, connection=connection,
-                    discretization='srgb_float',
-                )
-
-        cursor.close()

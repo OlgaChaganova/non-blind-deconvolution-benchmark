@@ -5,6 +5,8 @@ import typing as tp
 import matplotlib.pyplot as plt
 import numpy as np
 
+from constants import MAX_UINT16, MAX_UINT8
+
 
 def imread(img_path: str) -> np.array:
     """Return float image if png and sRGB uint8 if jpg"""
@@ -126,3 +128,15 @@ def center_crop(img: np.array, new_width: int = None, new_height: int = None) ->
     if len(img.shape) == 2:
         return img[top:bottom, left:right]
     return img[top:bottom, left:right, ...]
+
+
+def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype = np.float32) -> np.ndarray:
+    """Normalize image values by the maximum possible pixel value."""
+    if not max_value:
+        if image.dtype == np.uint8:
+            max_value = MAX_UINT8
+        elif image.dtype == np.uint16:
+            max_value = MAX_UINT16
+        else:
+            raise ValueError(f'Expected dtype np.uint8, np.uint16, but got {image.dtype}')
+    return (image / max_value).astype(out_dtype)
