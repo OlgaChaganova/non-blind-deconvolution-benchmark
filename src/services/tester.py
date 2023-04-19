@@ -375,7 +375,7 @@ class RealPipileneTester(BaseTester):
                 '3d': linrgbf_to_srgbf(blurred_3d)}
         }
 
-        return transformed_images
+        return transformed_images, kernel
 
     def _calculate_metrics(
         self,
