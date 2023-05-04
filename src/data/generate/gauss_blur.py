@@ -23,8 +23,10 @@ def parse():
     return parser.parse_args()
 
 
-def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[int, int], angle: int) -> np.array:
+def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[np.int64, np.int64], angle: int) -> np.array:
     """kernel size = 3*sigma for gaussian filters (make a decently sized kernel)"""
+    if not isinstance(size, tuple):
+        size = (size, size)
     m, n = tuple(s * sigmax + sigmay for s in size)
     kernel = np.zeros((m, n))
     for x in range(m):

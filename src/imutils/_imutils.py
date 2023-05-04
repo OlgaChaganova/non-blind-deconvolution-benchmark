@@ -5,7 +5,8 @@ import typing as tp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from constants import MAX_UINT16, MAX_UINT8
+from constants import MAX_UINT16, MAX_UINT8, IMAGE_SIZE
+from data.convertation import uint8_to_float32, srgbf_to_linrgbf
 
 
 def imread(img_path: str) -> np.array:
@@ -140,3 +141,19 @@ def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype
         else:
             raise ValueError(f'Expected dtype np.uint8, np.uint16, but got {image.dtype}')
     return (image / max_value).astype(out_dtype)
+
+
+def impreprocess(image_path: str, crop: bool):
+    """Perfom initial image preprocessing: crop -> grayscale -> srgb2linrgb"""
+    image = imread(image_path)
+
+    if crop:
+        image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+
+    if image_path.endswith('.jpg'):  # sRGB 8 bit
+        image = uint8_to_float32(image)  # sRGB float
+
+    if image.ndim == 3:
+        image = srgb2gray(image)  # sRGB float
+
+    return srgbf_to_linrgbf(image)  # linRGB float
