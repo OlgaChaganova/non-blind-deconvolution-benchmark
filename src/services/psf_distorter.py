@@ -19,32 +19,34 @@ class PSFDistorter(object):
         ...
     
     def __call__(self, type: tp.Literal['motion', 'gauss', 'eye'], **kwargs) -> np.ndarray:
-        if type == 'motion':
+        if type == 'motion_blur':
             return self._motion(**kwargs)
-        elif type == 'gauss':
+        elif type == 'gauss_blur':
             return self._gauss(**kwargs)
-        elif type == 'eye':
+        elif type == 'eye_blur':
             return self._eye(**kwargs)
         else:
-            raise ValueError()
+            raise ValueError(
+                f'Available types are motion_blur, gauss_blur, eye_blur, but got {type}'
+            )
 
-    def _motion(self, ker: np.ndarray, v_g: float, gaus_var: float) -> np.ndarray:
+    def _motion(self, psf: np.ndarray, v_g: float, gaus_var: float) -> np.ndarray:
         """Distort motion blur kernels."""
 
-        kh, kv = np.shape(ker)
+        kh, kv = np.shape(psf)
         nz = v_g * np.random.randn(kh, kv)
         if v_g == 0:
             f = fspecial('gaussian', [5, 5], gaus_var)
-            nz_ker = cconv_np(ker, f)
+            nz_ker = cconv_np(psf, f)
             nz_ker = nz_ker / np.sum(nz_ker)
             return nz_ker
 
         ## Blurry Some Part of kernel
-        W_v = (ker > 0)
+        W_v = (psf > 0)
         struct = generate_binary_structure(2, 1)
         W_v = binary_dilation(W_v, struct)
         nz_W_v = nz * W_v
-        nz_ker = ker + nz_W_v
+        nz_ker = psf + nz_W_v
 
         ## Omit some part
         if np.random.randint(2):
@@ -62,7 +64,7 @@ class PSFDistorter(object):
         nz_ker += W_rand * np.random.randn(kh, kv) * 0.002
         if np.sum(nz_ker) ==0:
             print('np.sum(nz_ker)==0')
-            nz_ker = ker + nz_W_v
+            nz_ker = psf + nz_W_v
             return nz_ker / np.sum(nz_ker)
         nz_ker[nz_ker < 1e-5] = 0
         nz_ker = nz_ker / np.sum(nz_ker)
