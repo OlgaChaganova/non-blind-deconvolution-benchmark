@@ -1,5 +1,6 @@
 """Script for tuning Wiener parameters (balance) in case of non-blind noise scenario"""
 
+import argparse
 import logging
 import os
 import typing as tp
@@ -24,6 +25,21 @@ _NOISED_TYPES = [_NOISE_NAME, _NO_NOISE_NAME]
 _SSIM_NAME = 'ssim'
 _PSNR_NAME = 'psnr'
 _METRIC_TYPES = [_SSIM_NAME, _PSNR_NAME]
+
+
+def parse():
+    parser = argparse.ArgumentParser(
+        description='Parser for nbd models testing.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        '--blur_type',
+        type=str,
+        choices=['gauss_blur', 'motion_blur', 'eye_blur', 'all'],
+        default='all',
+        help="Blur type to be tuned."
+    )
+    return parser.parse_args()
 
 
 def grid_search_non_blind_noise(
@@ -301,31 +317,40 @@ def _calc_metrics_in_blind_case(
         metrics[_SSIM_NAME][balance_value].append(ssim(gt_image, restored_noised))
 
 
-def get_paths(benchmark_list_path: str) -> tp.Tuple[tp.List[str], tp.List[str]]:
+def get_paths(
+    benchmark_list_path: str,
+    target_blur_type: tp.Literal['gauss_blur', 'eye_blur', 'motion_blur', 'all'],
+) -> tp.Tuple[tp.List[str], tp.List[str]]:
     images_path = []
     kernels_path = []
     with open(benchmark_list_path, 'r+') as file:
         next(file)
         for line in file:
-            _, _, kernel_path, _, image_path = line.strip().split(',')
-            images_path.append(image_path)
-            kernels_path.append(kernel_path)
+            blur_type, _, kernel_path, _, image_path = line.strip().split(',')
+            if target_blur_type == 'all':
+                images_path.append(image_path)
+                kernels_path.append(kernel_path)
+            else:
+                if blur_type == target_blur_type:
+                    images_path.append(image_path)
+                    kernels_path.append(kernel_path)   
     return images_path, kernels_path
 
 
 def main():
+    args = parse()
     logging.basicConfig(filename=os.path.join('results', 'wiener_tuning_results.log'), level=logging.INFO)
 
     config = OmegaConf.load(os.path.join('configs', 'config.yml'))
 
     benchmark_list_path = config.dataset.benchmark_list_path
     balance_values = config.wiener_tuning.balance_values
-    images_path, kernels_path = get_paths(benchmark_list_path)
+    images_path, kernels_path = get_paths(benchmark_list_path, target_blur_type=args.blur_type)
 
     mu = config.dataset.blur.mu
     sigma = config.dataset.blur.sigma
 
-    logging.info(f'Tuning on {benchmark_list_path}')
+    logging.info(f'Tuning on {benchmark_list_path}; blur type: {args.blur_type.upper()}')
     start_time = time()
     grid_search_non_blind_noise(
         balance_values_noise=balance_values.noise,
