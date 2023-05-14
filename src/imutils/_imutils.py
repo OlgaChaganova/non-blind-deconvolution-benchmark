@@ -143,7 +143,7 @@ def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype
     return (image / max_value).astype(out_dtype)
 
 
-def impreprocess(image_path: str, crop: bool):
+def impreprocess(image_path: str, crop: bool) -> np.ndarray:
     """Perfom initial image preprocessing: crop -> grayscale -> srgb2linrgb"""
     image = imread(image_path)
 
