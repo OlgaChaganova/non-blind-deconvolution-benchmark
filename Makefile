@@ -34,6 +34,7 @@ test_help:
 
 .PHONY: build
 build:
+	docker stop nbdb-c && docker rm nbdb-c
 	docker build . -f Dockerfile -t nbdb --force-rm
 
 .PHONY: run
