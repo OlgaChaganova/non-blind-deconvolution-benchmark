@@ -143,12 +143,12 @@ def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype
     return (image / max_value).astype(out_dtype)
 
 
-def impreprocess(image_path: str, crop: bool) -> np.ndarray:
+def impreprocess(image_path: str, crop: bool, image_size: int = IMAGE_SIZE) -> np.ndarray:
     """Perfom initial image preprocessing: crop -> grayscale -> srgb2linrgb"""
     image = imread(image_path)
 
     if crop:
-        image = center_crop(image, IMAGE_SIZE, IMAGE_SIZE)
+        image = center_crop(image, image_size, image_size)
 
     if image_path.endswith('.jpg'):  # sRGB 8 bit
         image = uint8_to_float32(image)  # sRGB float
