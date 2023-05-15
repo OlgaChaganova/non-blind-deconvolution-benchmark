@@ -9,9 +9,10 @@ def srgbf_to_linrgbf(image: npt.NDArray[np.float_], eps: float = 1e-3) -> npt.ND
     assert image.max() <= (1 + eps), f'Image max must be <= 1, but got {image.max()}'
     assert image.min() >= (0 - eps), f'Image min must be >= 0, but got {image.min()}'
     mask = image <= 0.04045
-    image[mask] = image[mask] / 12.92
-    image[np.invert(mask)] = ((image[np.invert(mask)] + 0.055) / 1.055) ** 2.4
-    return image.astype(np.float32)
+    image_lin = image.copy()
+    image_lin[mask] = image_lin[mask] / 12.92
+    image_lin[np.invert(mask)] = ((image_lin[np.invert(mask)] + 0.055) / 1.055) ** 2.4
+    return image_lin.astype(np.float32)
 
 
 def linrgbf_to_srgbf(image: npt.NDArray[np.float_], eps: float = 1e-3) -> npt.NDArray[np.float32]:
@@ -20,9 +21,10 @@ def linrgbf_to_srgbf(image: npt.NDArray[np.float_], eps: float = 1e-3) -> npt.ND
     assert image.max() <= (1 + eps), f'Image max must be <= 1, but got {image.max()}'
     assert image.min() >= (0 - eps), f'Image min must be >= 0, but got {image.min()}'
     mask = image <= 0.0031308
-    image[mask] = image[mask] * 12.92
-    image[np.invert(mask)] = 1.055 * (image[np.invert(mask)] ** (1/2.4)) - 0.055
-    return image.astype(np.float32)
+    image_srgb = image.copy()
+    image_srgb[mask] = image_srgb[mask] * 12.92
+    image_srgb[np.invert(mask)] = 1.055 * (image_srgb[np.invert(mask)] ** (1/2.4)) - 0.055
+    return image_srgb.astype(np.float32)
 
 
 def float_to_uint16(image: npt.NDArray[np.float_], eps: float = 1e-3) -> npt.NDArray[np.uint16]:
@@ -36,11 +38,12 @@ def float_to_uint16(image: npt.NDArray[np.float_], eps: float = 1e-3) -> npt.NDA
 def linrrgb16_to_srgb8(image: npt.NDArray[np.uint16]) -> npt.NDArray[np.uint8]:
     """Convert image from 16 bit Linear RGB 16 bit to SRGB 8 bit """
     assert image.dtype == np.uint16, f'Image dtype must be np.uint16, but got {image.dtype}'
-    image = image / MAX_UINT16
-    mask = image <= 0.0031308
-    image[mask] = image[mask] * 12.92
-    image[np.invert(mask)] = 1.055 * (image[np.invert(mask)] ** (1/2.4)) - 0.055
-    return (image  * MAX_UINT8).astype(np.uint8)
+    image_srgb = image.copy()
+    image_srgb = image_srgb / MAX_UINT16
+    mask = image_srgb <= 0.0031308
+    image_srgb[mask] = image_srgb[mask] * 12.92
+    image_srgb[np.invert(mask)] = 1.055 * (image_srgb[np.invert(mask)] ** (1/2.4)) - 0.055
+    return (image_srgb  * MAX_UINT8).astype(np.uint8)
 
 
 def uint16_to_uint8(image: npt.NDArray[np.uint16]) -> npt.NDArray[np.uint8]:
