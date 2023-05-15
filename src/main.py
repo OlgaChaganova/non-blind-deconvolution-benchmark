@@ -13,7 +13,7 @@ from deconv.neural.usrnet.predictor import USRNetPredictor
 from deconv.neural.dwdn.predictor import DWDNPredictor
 from deconv.neural.kerunc.predictor import KerUncPredictor
 from deconv.neural.rgdn.predictor import RGDNPredictor
-from services.tester import MainTester, NNPipelineTester, RealPipileneTester
+from services.tester import MainTester
 
 
 warnings.filterwarnings('ignore', category=UserWarning)  # due to old pythorch version (1.7)
@@ -178,25 +178,7 @@ def main():
             tester.test()
 
         elif args.mode == 'model_vs_real':
-            tester = NNPipelineTester(
-                benchmark_list_path=cd.benchmark_list_path,
-                models=models,
-                db_path=db_metrics.db_path,
-                table_name=table_name,
-                model_config=cm,
-                data_config=cd,
-            )
-            tester.test()
-
-            tester = RealPipileneTester(
-                benchmark_list_path=cd.benchmark_list_path,
-                models=models,
-                db_path=db_metrics.db_path,
-                table_name=table_name,
-                model_config=cm,
-                data_config=cd,
-            )
-            tester.test()
+            raise NotImplementedError()
 
         logging.info('Done!')
 
