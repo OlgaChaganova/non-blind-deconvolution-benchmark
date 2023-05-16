@@ -143,6 +143,19 @@ def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype
     return (image / max_value).astype(out_dtype)
 
 
+def add_white_pixel(image: np.ndarray) -> np.ndarray:
+    """Add single white pixel to the image (because Wiener filter works poor on the dark images)"""
+    if image.max() < 1:
+        image_h, image_w = image.shape[:2]
+        image_new = image.copy()
+        image_new[0, 0] = 1
+        image_new[0, image_w - 1] = 1
+        image_new[image_h - 1, 0] = 1
+        image_new[image_h - 1, image_w - 1] = 1
+        return image_new
+    return image
+    
+
 def impreprocess(image_path: str, crop: bool, image_size: int = IMAGE_SIZE) -> np.ndarray:
     """Perfom initial image preprocessing: crop -> grayscale -> srgb2linrgb"""
     image = imread(image_path)
@@ -156,4 +169,5 @@ def impreprocess(image_path: str, crop: bool, image_size: int = IMAGE_SIZE) -> n
     if image.ndim == 3:
         image = srgb2gray(image)  # sRGB float
 
-    return srgbf_to_linrgbf(image)  # linRGB float
+    image = srgbf_to_linrgbf(image)  # linRGB float
+    return add_white_pixel(image)  # for Wiener filter correct work
