@@ -20,14 +20,13 @@ def generate_full_list():
 
     mult_const = 10
     gt_images = {
-        'bsds300': sorted(list(Path('datasets/gt/BSDS300').rglob('*.jpg'))) * mult_const,
         'sun': sorted(list(Path('datasets/gt/Sun-gray').rglob('*.png'))) * mult_const,
-        'precomp-animals': sorted(list(Path('datasets/gt/precomp/animals').rglob('*.jpg'))) * mult_const,
-        'precomp-city': sorted(list(Path('datasets/gt/precomp/city').rglob('*.jpg'))) * mult_const,
-        'precomp-faces': sorted(list(Path('datasets/gt/precomp/faces').rglob('*.jpg'))) * mult_const,
-        'precomp-icons': sorted(list(Path('datasets/gt/precomp/icons_jpg').rglob('*.png'))) * mult_const,
-        'precomp-nature': sorted(list(Path('datasets/gt/precomp/nature').rglob('*.jpg'))) * mult_const,
-        'precomp-texts': sorted(list(Path('datasets/gt/precomp/texts').rglob('*.jpg'))) * mult_const,
+        'sca2023-animals': sorted(list(Path('datasets/gt/precomp/animals').rglob('*.jpg'))) * mult_const,
+        'sca2023-city': sorted(list(Path('datasets/gt/precomp/city').rglob('*.jpg'))) * mult_const,
+        'sca2023-faces': sorted(list(Path('datasets/gt/precomp/faces').rglob('*.jpg'))) * mult_const,
+        'sca2023-icons': sorted(list(Path('datasets/gt/precomp/icons_jpg').rglob('*.png'))) * mult_const,
+        'sca2023-nature': sorted(list(Path('datasets/gt/precomp/nature').rglob('*.jpg'))) * mult_const,
+        'sca2023-texts': sorted(list(Path('datasets/gt/precomp/texts').rglob('*.jpg'))) * mult_const,
     }
 
     for dataset_type, files in gt_images.items():

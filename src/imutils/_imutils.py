@@ -5,6 +5,9 @@ import typing as tp
 import matplotlib.pyplot as plt
 import numpy as np
 
+from constants import MAX_UINT16, MAX_UINT8, IMAGE_SIZE
+from data.convertation import uint8_to_float32, srgbf_to_linrgbf
+
 
 def imread(img_path: str) -> np.array:
     """Return float image if png and sRGB uint8 if jpg"""
@@ -126,3 +129,45 @@ def center_crop(img: np.array, new_width: int = None, new_height: int = None) ->
     if len(img.shape) == 2:
         return img[top:bottom, left:right]
     return img[top:bottom, left:right, ...]
+
+
+def norm_values(image: np.ndarray, max_value: tp.Optional[int] = None, out_dtype = np.float32) -> np.ndarray:
+    """Normalize image values by the maximum possible pixel value."""
+    if not max_value:
+        if image.dtype == np.uint8:
+            max_value = MAX_UINT8
+        elif image.dtype == np.uint16:
+            max_value = MAX_UINT16
+        else:
+            raise ValueError(f'Expected dtype np.uint8, np.uint16, but got {image.dtype}')
+    return (image / max_value).astype(out_dtype)
+
+
+def add_white_pixel(image: np.ndarray) -> np.ndarray:
+    """Add single white pixel to the image (because Wiener filter works poor on the dark images)"""
+    if image.max() < 1:
+        image_h, image_w = image.shape[:2]
+        image_new = image.copy()
+        image_new[0, 0] = 1
+        image_new[0, image_w - 1] = 1
+        image_new[image_h - 1, 0] = 1
+        image_new[image_h - 1, image_w - 1] = 1
+        return image_new
+    return image
+    
+
+def impreprocess(image_path: str, crop: bool, image_size: int = IMAGE_SIZE) -> np.ndarray:
+    """Perfom initial image preprocessing: crop -> grayscale -> srgb2linrgb"""
+    image = imread(image_path)
+
+    if crop:
+        image = center_crop(image, image_size, image_size)
+
+    if image_path.endswith('.jpg'):  # sRGB 8 bit
+        image = uint8_to_float32(image)  # sRGB float
+
+    if image.ndim == 3:
+        image = srgb2gray(image)  # sRGB float
+
+    image = srgbf_to_linrgbf(image)  # linRGB float
+    return add_white_pixel(image)  # for Wiener filter correct work

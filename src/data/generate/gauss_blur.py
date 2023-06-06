@@ -23,8 +23,26 @@ def parse():
     return parser.parse_args()
 
 
-def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[int, int], angle: int) -> np.array:
+def simulate_psf_rotation(psf: np.ndarray, angle: tp.Tuple[float, int]) -> np.ndarray:
+    max_nonzero_value = psf[psf > 0].max()  # number of non-zero elements in psf
+    rotated_psf = rotate(psf, angle)
+    
+    # rotation produces many non-zero small elements, so we cut them off
+    top_value = max_nonzero_value / 20
+    rotated_psf[(rotated_psf > 0) & (rotated_psf < top_value)] = 0
+    
+    if psf.shape != rotated_psf.shape:
+        diff_y = rotated_psf.shape[0] - psf.shape[0]
+        diff_x = rotated_psf.shape[1] - psf.shape[1]
+        rotated_psf = rotated_psf[(diff_y // 2):-(diff_y // 2 + diff_y % 2), (diff_x // 2):-(diff_x // 2 + diff_x % 2)]
+    
+    return rotated_psf / rotated_psf.sum()
+
+
+def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[np.int64, np.int64], angle: int) -> np.array:
     """kernel size = 3*sigma for gaussian filters (make a decently sized kernel)"""
+    if not isinstance(size, tuple):
+        size = (size, size)
     m, n = tuple(s * sigmax + sigmay for s in size)
     kernel = np.zeros((m, n))
     for x in range(m):
@@ -34,7 +52,7 @@ def generate_gauss_kernel(sigmax: float, sigmay: float, size: tp.Tuple[int, int]
                 (1.0 / sqrt(2 * pi) * sigmay) * exp(( disty ** 2 / (-1.0 * (sigmay ** 2))))
             kernel[x, y] = value
     kernel = kernel / np.sum(kernel)
-    return rotate(kernel, angle=angle)
+    return simulate_psf_rotation(kernel, angle=angle)
 
 
 def save_psf(filename: str, psf: np.array, params: dict):

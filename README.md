@@ -56,7 +56,7 @@ make test
 
 2. Eye PSF:
 
-    2.1 Generated with our own simulator. Size: 256*256.
+    2.1 90 kernels (30 big, 30 medium, 30 small) taken from SCA-2023 dataset.
 
 3. Gauss:
 
@@ -65,11 +65,9 @@ make test
 
 ### Ground truth images
 
-1. [BSDS300](https://www2.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/segbench/)
+1. [Sun et al](https://cs.brown.edu/people/lbsun/deblur2013/deblur2013iccp.html). Images are taken from [here](https://drive.google.com/drive/folders/1Mb_mhtLG6N7CwiCMBnBMlJZyaqxQM-Nl).
 
-2. [Sun et al](https://cs.brown.edu/people/lbsun/deblur2013/deblur2013iccp.html). Images are taken from [here](https://drive.google.com/drive/folders/1Mb_mhtLG6N7CwiCMBnBMlJZyaqxQM-Nl).
-
-3. Precompensation dataset [TBA]
+2. SCA-2023 dataset (539 images in 6 categories: animals, city, faces, texts, icons, nature).
 
 
 ### Discretization
